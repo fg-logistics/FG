@@ -300,11 +300,12 @@
                             </button>
                         </div>
                     </li>
-                    <!-- Stok SIG Menu -->
+                    <!-- Stok SIG Menu (Private) -->
                     <li>
                         <button id="nav-btn-stok-sig" onclick="handleTabClick('stok-sig')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
                             <i class="ph-bold ph-buildings text-xl group-hover:text-accentCyan transition-colors"></i>
                             <span class="flex-1">Stok SIG</span>
+                            <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
                         </button>
                     </li>
                     <!-- Offtake Menu (Private) -->
@@ -1189,8 +1190,8 @@
                     <i class="ph-fill ph-lock-key text-xl md:text-2xl"></i>
                 </div>
                 <div>
-                    <h3 class="font-extrabold text-base md:text-lg text-white">Akses Menu Terkunci</h3>
-                    <p class="text-[10px] md:text-xs text-textSecondary">Membutuhkan otorisasi untuk membuka modul ini</p>
+                    <h3 class="font-extrabold text-base md:text-lg text-white">Akses Menu Privat</h3>
+                    <p class="text-[10px] md:text-xs text-textSecondary">Masukkan kredensial admin untuk membuka modul yang dikunci</p>
                 </div>
             </div>
             <form onsubmit="submitAuthForm(event)" class="space-y-3 md:space-y-4">
@@ -4415,7 +4416,7 @@ ${JSON.stringify(payload)}`;
                 toggleSidebar();
             }
 
-            const privateTabs = ['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary']; 
+            const privateTabs = ['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig']; 
             if (privateTabs.includes(tabName)) { 
                 if (isAuthenticated) switchMainTab(tabName); 
                 else { pendingTargetTab = tabName; openAuthModal(); } 
@@ -4514,7 +4515,7 @@ ${JSON.stringify(payload)}`;
             isAuthenticated = false; 
             updateAuthUI(); 
             showToast('Sesi Terkunci', 'Anda telah kembali ke mode Publik.', 'info'); 
-            if (['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary'].includes(activeMainTab)) switchMainTab('stock'); 
+            if (['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'].includes(activeMainTab)) switchMainTab('stock'); 
         }
         
         function updateAuthUI() { 

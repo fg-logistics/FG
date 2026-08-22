@@ -878,7 +878,7 @@
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 md:gap-3 bg-bgPrimary/50 p-2 md:p-3 rounded-lg md:rounded-xl border border-borderMain w-full xl:w-auto">
                             <div class="flex-1 sm:flex-none">
                                 <label class="block text-[9px] md:text-[10px] font-bold text-textSecondary uppercase tracking-widest mb-1">Date</label>
-                                <input type="date" id="execDateFilter" onchange="renderExecReportPreview()" class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-statusSuccess transition-all cursor-pointer w-full">
+                                <input type="date" id="execDateFilter" onchange="syncExecReportDateFilters('summary')" class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-statusSuccess transition-all cursor-pointer w-full">
                             </div>
                             <div class="flex-1 sm:flex-none">
                                 <label class="block text-[9px] md:text-[10px] font-bold text-textSecondary uppercase tracking-widest mb-1">Time Range</label>
@@ -938,7 +938,7 @@
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 md:gap-3 bg-bgPrimary/50 p-2 md:p-3 rounded-lg md:rounded-xl border border-borderMain w-full xl:w-auto">
                             <div class="flex-1 sm:flex-none">
                                 <label class="block text-[9px] md:text-[10px] font-bold text-textSecondary uppercase tracking-widest mb-1">Date</label>
-                                <input type="date" id="execDetailDateFilter" onchange="renderExecReportDetail()" class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple transition-all cursor-pointer w-full">
+                                <input type="date" id="execDetailDateFilter" onchange="syncExecReportDateFilters('detail')" class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple transition-all cursor-pointer w-full">
                             </div>
                             <input type="text" id="execDetailSearch" oninput="renderExecReportDetail()" placeholder="Cari SKU / Segment..." class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple w-full sm:w-48">
                             <button onclick="exportExecutiveDetailReport()" class="justify-center bg-gradient-to-r from-accentPurple to-indigo-600 hover:from-indigo-500 hover:to-accentPurple text-white font-bold px-3 md:px-5 py-1.5 md:py-2 rounded-md md:rounded-lg shadow-glow-purple transition-all flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs h-auto sm:h-[34px] whitespace-nowrap">
@@ -1618,13 +1618,11 @@
             };
 
             /*
-             * IMPORTANT:
-             * DATA column B (index 1) is the primary transaction-date source.
-             * Header-based date is used when available; otherwise column B is used.
-             * This prevents column A timestamp/other fields from shifting the report date.
+             * SINGLE DATE RULE FOR ALL EXECUTIVE REPORTS:
+             * DATA column B (index 1) is ALWAYS the transaction Date.
+             * Report > Summary and Report > Detail must use this same field.
              */
-            let idxDate = findHeaderIndex(['tanggal', 'tanggal transaksi', 'transaction date', 'date']);
-            if (idxDate < 0) idxDate = 1; // DATA column B
+            let idxDate = 1; // ALWAYS DATA column B = Date. Do not auto-detect another date column.
 
             let idxSegment = findHeaderIndex(['segment', 'segmen']);
             let idxType = findHeaderIndex(['type', 'tipe', 'jenis transaksi', 'transaction type']);
@@ -1786,10 +1784,23 @@
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         }
 
+        // SINGLE SOURCE OF TRUTH FOR REPORT DATE:
+        // Stock IN and Stock OUT must use exactly the same DATA column B date.
+        function getTransactionDateKey(record) {
+            if (!record) return '';
+            // originalRow[1] is DATA column B (Date)
+            const colB = Array.isArray(record.originalRow) ? record.originalRow[1] : '';
+            return reportDateKey(colB !== undefined && colB !== null && String(colB).trim() !== '' ? colB : record.rawDate);
+        }
+
         function getExecMovementBySku(selectedDate) {
             const movement = {};
             const targetKey = reportDateKey(selectedDate);
             if (!targetKey) return movement;
+
+            // Use the SKU master shown in the Executive Report as the canonical SKU set.
+            // This lets IN/OUT resolve the SKU whether it sits in Produk or Project Delivery.
+            const knownSkus = new Set((summaryData || []).map(x => String(x.sku || '').trim().toUpperCase()).filter(Boolean));
 
             const addMove = (skuRaw, direction, qty) => {
                 const sku = String(skuRaw || '').trim().toUpperCase();
@@ -1799,45 +1810,58 @@
                 movement[sku][direction] += amount;
             };
 
-            (Array.isArray(transactionRecords) ? transactionRecords : []).forEach(r => {
-                const key = reportDateKey(r.dateObj || r.rawDate);
+            const resolveSku = (r, direction) => {
+                const candidates = [r.produk, r.projectDelivery]
+                    .map(v => String(v || '').trim())
+                    .filter(v => v && v !== '-');
 
-                // STRICT DATE FILTER: only transactions on the selected date.
+                // Prefer a candidate that exactly matches a SKU in the report.
+                const matched = candidates.find(v => knownSkus.has(v.toUpperCase()));
+                if (matched) return matched;
+
+                // Preserve the original business rule as fallback.
+                return direction === 'in' ? (candidates[0] || '') : (candidates[1] || candidates[0] || '');
+            };
+
+            (Array.isArray(transactionRecords) ? transactionRecords : []).forEach(r => {
+                // CRITICAL: IN and OUT use exactly the same DATA column-B transaction date.
+                const key = getTransactionDateKey(r);
                 if (!key || key !== targetKey) return;
 
-                const type = String(r.type || '').trim().toUpperCase();
-                const qty = Number(r.zak) || 0;
+                const typeRaw = String(r.type || '').trim();
+                const type = typeRaw.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+                const qty = Math.abs(Number(r.zak) || 0);
                 if (!qty) return;
 
                 const isOutputProduction =
-                    type === 'OUTPUT PRODUCTION' ||
-                    type.includes('OUTPUT PRODUCTION') ||
-                    (type.includes('OUTPUT') && type.includes('PRODUCTION'));
+                    (type.includes('OUTPUT') && (type.includes('PRODUKSI') || type.includes('PRODUCTION'))) ||
+                    type === 'PRODUKSI' || type === 'PRODUCTION' ||
+                    type.includes('HASIL PRODUKSI');
 
                 const isDelivery =
-                    type === 'DELIVERY' ||
-                    type.includes('DELIVERY');
-
-                let direction = '';
-                let sku = '';
+                    type === 'DELIVERY' || type.includes('DELIVERY') ||
+                    type.includes('PENGIRIMAN') || type.includes('KIRIM');
 
                 if (isOutputProduction) {
-                    direction = 'in';
-                    // Output Produksi uses Produk/SKU as the inbound SKU.
-                    sku = r.produk || r.projectDelivery;
-                } else if (isDelivery) {
-                    direction = 'out';
-                    // Delivery uses Project Delivery first to avoid double counting.
-                    sku = r.projectDelivery || r.produk;
-                } else if (qty > 0) {
-                    direction = 'in';
-                    sku = r.produk || r.projectDelivery;
-                } else if (qty < 0) {
-                    direction = 'out';
-                    sku = r.projectDelivery || r.produk;
+                    const sku = resolveSku(r, 'in');
+                    addMove(sku, 'in', qty);
+                    return;
                 }
 
-                if (direction && sku) addMove(sku, direction, qty);
+                if (isDelivery) {
+                    const sku = resolveSku(r, 'out');
+                    addMove(sku, 'out', qty);
+                    return;
+                }
+
+                // Other explicit IN/OUT transaction labels.
+                if (type.includes('IN') || type.includes('MASUK')) {
+                    const sku = resolveSku(r, 'in');
+                    addMove(sku, 'in', qty);
+                } else if (type.includes('OUT') || type.includes('KELUAR') || type.includes('OFFTAKE')) {
+                    const sku = resolveSku(r, 'out');
+                    addMove(sku, 'out', qty);
+                }
             });
 
             return movement;
@@ -1870,7 +1894,7 @@
             const netAfter = {};
 
             (Array.isArray(transactionRecords) ? transactionRecords : []).forEach(r => {
-                const key = reportDateKey(r.dateObj || r.rawDate);
+                const key = getTransactionDateKey(r);
 
                 // Termasuk tanggal terpilih karena opening tanggal 22
                 // harus merupakan saldo sebelum transaksi tanggal 22.
@@ -1889,8 +1913,11 @@
 
                 const isOutputProduction =
                     type === 'OUTPUT PRODUCTION' ||
+                    type === 'OUTPUT PRODUKSI' ||
                     type.includes('OUTPUT PRODUCTION') ||
-                    (type.includes('OUTPUT') && type.includes('PRODUCTION'));
+                    type.includes('OUTPUT PRODUKSI') ||
+                    (type.includes('OUTPUT') && (type.includes('PRODUCTION') || type.includes('PRODUKSI'))) ||
+                    (type.includes('PRODUKSI') && !type.includes('DELIVERY'));
 
                 const isDelivery =
                     type === 'DELIVERY' ||
@@ -1934,15 +1961,36 @@
             return opening;
         }
 
+        function getExecReportSelectedDate(source = 'summary') {
+            const id = source === 'detail' ? 'execDetailDateFilter' : 'execDateFilter';
+            const el = document.getElementById(id);
+            return (el && el.value) ? el.value : new Date().toISOString().split('T')[0];
+        }
+
+        function syncExecReportDateFilters(source = 'summary') {
+            const selected = getExecReportSelectedDate(source);
+            const summaryEl = document.getElementById('execDateFilter');
+            const detailEl = document.getElementById('execDetailDateFilter');
+            if (summaryEl) summaryEl.value = selected;
+            if (detailEl) detailEl.value = selected;
+
+            // Both Report > Summary and Report > Detail use the exact same
+            // transaction-date source: DATA column B.
+            if (typeof generateExecReportData === 'function') generateExecReportData();
+            if (typeof renderExecReportPreview === 'function') renderExecReportPreview();
+            if (typeof renderExecReportDetail === 'function') renderExecReportDetail();
+        }
+
         function renderExecReportDetail() {
             const tbody = document.getElementById('execDetailReportTableBody');
             if (!tbody) return;
 
             const dateInput = document.getElementById('execDetailDateFilter');
             const searchInput = document.getElementById('execDetailSearch');
-            const selectedDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
+            const selectedDate = getExecReportSelectedDate('detail');
             const query = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
 
+            // Detail uses the exact same date engine as Summary: transactionRecords -> DATA column B.
             const movement = getExecMovementBySku(selectedDate);
             const opening = getExecOpeningBySku(selectedDate);
 
@@ -2016,7 +2064,7 @@
             showToast('Preparing Report...', 'Generating Executive Detail Excel Format...', 'info');
             renderExecReportDetail();
 
-            const dateSelected = document.getElementById('execDetailDateFilter')?.value || new Date().toISOString().split('T')[0];
+            const dateSelected = getExecReportSelectedDate('detail');
             const movement = getExecMovementBySku(dateSelected);
             const opening = getExecOpeningBySku(dateSelected);
 

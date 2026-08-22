@@ -21,6 +21,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- XLSX Library Bundle (xlsx-js-style) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <!-- PowerPoint Export -->
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@latest/dist/pptxgen.bundle.js"></script>
 
     <script>
         tailwind.config = {
@@ -281,11 +283,22 @@
                     </li>
                     <!-- Report Menu (Private) -->
                     <li>
-                        <button id="nav-btn-exec-report" onclick="handleTabClick('exec-report')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
+                        <button id="nav-btn-report" onclick="toggleReportMenu()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
                             <i class="ph-bold ph-file-pdf text-xl group-hover:text-statusSuccess transition-colors"></i>
                             <span class="flex-1">Report</span>
+                            <i id="reportMenuCaret" class="ph-bold ph-caret-down text-statusWarning transition-transform"></i>
                             <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
                         </button>
+                        <div id="reportSubmenu" class="hidden ml-3 mt-1 pl-3 border-l border-borderMain/60 space-y-1">
+                            <button id="nav-btn-exec-report-summary" onclick="handleTabClick('exec-report')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
+                                <i class="ph-bold ph-table text-accentCyan"></i>
+                                <span class="flex-1">Summary</span>
+                            </button>
+                            <button id="nav-btn-exec-report-detail" onclick="handleTabClick('exec-report-detail')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
+                                <i class="ph-bold ph-list-dashes text-accentPurple"></i>
+                                <span class="flex-1">Detail</span>
+                            </button>
+                        </div>
                     </li>
                     <!-- Stok SIG Menu -->
                     <li>
@@ -715,6 +728,7 @@
                             <div class="flex gap-2 w-full xl:w-auto">
                                 <button onclick="openGeminiSettings()" class="flex-1 xl:flex-none justify-center px-3 py-2 bg-bgPrimary border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2"><i class="ph-bold ph-gear"></i> Worker Settings</button>
                                 <button type="button" onclick="runAIStockAnalysis(event)" id="aiAnalyzeBtn" class="flex-1 xl:flex-none justify-center px-5 py-2 bg-gradient-to-r from-accentPurple to-pink-500 text-white font-bold rounded-xl shadow-glow-purple text-[10px] flex items-center gap-2"><i class="ph-bold ph-sparkle"></i> Analyze</button>
+                                <button type="button" onclick="exportAIExecutivePPT(event)" id="aiPptBtn" class="flex-1 xl:flex-none justify-center px-4 py-2 bg-gradient-to-r from-[#173B66] to-[#0E7490] text-white font-bold rounded-xl shadow-lg text-[10px] flex items-center gap-2 border border-accentCyan/30"><i class="ph-bold ph-presentation-chart"></i> Download PPT</button>
                             </div>
                         </div>
 
@@ -887,7 +901,7 @@
                             <div class="bg-bgCard border border-borderMain rounded-lg md:rounded-xl overflow-hidden shadow-lg w-full">
                                 <div class="bg-[#14213d] px-3 md:px-4 py-2 border-b border-borderMain flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
                                     <span class="text-[10px] md:text-xs font-bold text-textSecondary uppercase">Preview Format Tabel</span>
-                                    <span class="text-[8px] md:text-[10px] bg-accentCyan/20 text-accentCyan px-1.5 md:px-2 py-0.5 rounded border border-accentCyan/30 whitespace-nowrap"><i class="ph-bold ph-pencil-simple mr-1"></i>Input manual In & Out sebelum di-export</span>
+                                    <span class="text-[8px] md:text-[10px] bg-accentCyan/20 text-accentCyan px-1.5 md:px-2 py-0.5 rounded border border-accentCyan/30 whitespace-nowrap"><i class="ph-bold ph-database mr-1"></i>IN & OUT otomatis dari sheet DATA</span>
                                 </div>
                                 <div class="overflow-x-auto w-full">
                                     <table class="w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
@@ -904,6 +918,56 @@
                                         </thead>
                                         <tbody id="execReportTableBody" class="divide-y divide-borderMain/40 font-mono text-[10px] md:text-xs">
                                         </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- TAB 4B: LAPORAN EKSEKUTIF DETAIL -->
+                <div id="view-exec-report-detail" class="hidden glass-panel rounded-2xl border border-borderMain overflow-hidden flex flex-col h-[600px] md:h-[650px] w-full">
+                    <div class="p-3 md:p-5 border-b border-borderMain bg-bgCard/90 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-3 md:gap-4">
+                        <div class="flex-1 w-full">
+                            <h3 class="font-bold text-white text-sm md:text-base flex items-center gap-1.5 md:gap-2 mb-1">
+                                <i class="ph-fill ph-list-dashes text-accentPurple text-lg md:text-xl"></i> Executive Report Detail
+                            </h3>
+                            <p class="text-[10px] md:text-xs text-textSecondary">Detail stock per SKU berdasarkan tanggal yang dipilih dari sheet DATA.</p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 md:gap-3 bg-bgPrimary/50 p-2 md:p-3 rounded-lg md:rounded-xl border border-borderMain w-full xl:w-auto">
+                            <div class="flex-1 sm:flex-none">
+                                <label class="block text-[9px] md:text-[10px] font-bold text-textSecondary uppercase tracking-widest mb-1">Date</label>
+                                <input type="date" id="execDetailDateFilter" onchange="renderExecReportDetail()" class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple transition-all cursor-pointer w-full">
+                            </div>
+                            <input type="text" id="execDetailSearch" oninput="renderExecReportDetail()" placeholder="Cari SKU / Segment..." class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple w-full sm:w-48">
+                            <button onclick="exportExecutiveDetailReport()" class="justify-center bg-gradient-to-r from-accentPurple to-indigo-600 hover:from-indigo-500 hover:to-accentPurple text-white font-bold px-3 md:px-5 py-1.5 md:py-2 rounded-md md:rounded-lg shadow-glow-purple transition-all flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs h-auto sm:h-[34px] whitespace-nowrap">
+                                <i class="ph-bold ph-download-simple text-sm md:text-base"></i> Download Detail
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-auto bg-bgPrimary/30 w-full">
+                        <div class="p-2 md:p-4">
+                            <div class="bg-bgCard border border-borderMain rounded-lg md:rounded-xl overflow-hidden shadow-lg w-full">
+                                <div class="bg-[#14213d] px-3 md:px-4 py-2 border-b border-borderMain flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                    <span class="text-[10px] md:text-xs font-bold text-textSecondary uppercase">Detail Stock Movement</span>
+                                    <span id="execDetailPeriodLabel" class="text-[8px] md:text-[10px] bg-accentPurple/20 text-accentPurple px-1.5 md:px-2 py-0.5 rounded border border-accentPurple/30 whitespace-nowrap">Date: --</span>
+                                </div>
+                                <div class="overflow-x-auto w-full">
+                                    <table class="w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
+                                        <thead class="bg-[#1a2b4c] border-b border-borderMain shadow-sm">
+                                            <tr class="text-[9px] md:text-[11px] font-bold text-white uppercase tracking-wider">
+                                                <th class="px-3 md:px-5 py-2 md:py-3 border-r border-borderMain/50">Segment</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 border-r border-borderMain/50">SKU</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 text-right border-r border-borderMain/50 text-accentCyan">Weight (KG)</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 text-right border-r border-borderMain/50 text-accentPurple">Opening Balance Stock (ZAK)</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 text-right border-r border-borderMain/50 text-statusSuccess">IN</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 text-right border-r border-borderMain/50 text-statusDanger">OUT</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 text-right border-r border-borderMain/50">Qty (ZAK)</th>
+                                                <th class="px-3 md:px-5 py-2 md:py-3 text-right">Qty (TON)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="execDetailReportTableBody" class="divide-y divide-borderMain/40 font-mono text-[10px] md:text-xs"></tbody>
                                     </table>
                                 </div>
                             </div>
@@ -1266,6 +1330,8 @@
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
             document.getElementById('execDateFilter').value = todayStr;
+            const execDetailDate = document.getElementById('execDetailDateFilter');
+            if (execDetailDate) execDetailDate.value = todayStr;
 
             document.getElementById('transStartDet').value = todayStr;
             document.getElementById('transEndDet').value = todayStr;
@@ -1329,7 +1395,8 @@
                 if(masterParsed && updateParsed && makloonParsed && rilisParsed) {
                     generateExecReportData(); 
                     renderSummaryTable(); 
-                    renderExecReportPreview(); 
+                    renderExecReportPreview();
+                    renderExecReportDetail();
                     updateKPIs(); 
                     renderCharts(); 
                     updateLastUpdateUI();
@@ -1501,9 +1568,11 @@
 
         function processUpdateRows(matrix) {
             if (!matrix || matrix.length === 0) return;
+
             let latestDateObj = new Date(0), foundValidDate = false;
             transactionRecords = [];
-            
+
+            // Detect header row.
             let bestHeaderIdx = -1, maxScore = -1;
             const keywords = ['tanggal', 'date', 'segment', 'type', 'tipe', 'produk', 'sku', 'zak', 'qty', 'ton', 'project', 'delivery'];
             for (let i = 0; i < Math.min(matrix.length, 15); i++) {
@@ -1511,93 +1580,123 @@
                 if (!row) continue;
                 let score = 0;
                 row.forEach(cell => {
-                    if (cell) {
-                        const str = cell.toString().toLowerCase();
-                        keywords.forEach(kw => { if (str.includes(kw)) score++; });
-                    }
+                    const s = String(cell || '').toLowerCase();
+                    if (s) keywords.forEach(kw => { if (s.includes(kw)) score++; });
                 });
                 if (score > maxScore) { maxScore = score; bestHeaderIdx = i; }
             }
+            if (bestHeaderIdx < 0) bestHeaderIdx = 0;
 
-            if (bestHeaderIdx === -1) bestHeaderIdx = 0;
-            const rawHeaders = matrix[bestHeaderIdx].map(h => h ? h.toString().replace(/[\r\n]+/g, ' ').trim() : '');
+            const rawHeaders = (matrix[bestHeaderIdx] || []).map(h =>
+                String(h || '').replace(/[\r\n]+/g, ' ').trim()
+            );
+            const rawRows = matrix.slice(bestHeaderIdx + 1);
             let maxCols = rawHeaders.length;
-            const rawMatrixRows = matrix.slice(bestHeaderIdx + 1);
-            rawMatrixRows.forEach(r => { if (r.length > maxCols) maxCols = r.length; });
+            rawRows.forEach(r => { if (r && r.length > maxCols) maxCols = r.length; });
 
             const cleanedHeaders = [];
             for (let c = 0; c < maxCols; c++) {
-                let hName = rawHeaders[c] || '';
-                if (!hName && rawMatrixRows.some(r => r[c] && r[c].toString().trim() !== '')) hName = `Kolom ${c + 1}`;
-                cleanedHeaders.push(hName);
+                let h = rawHeaders[c] || '';
+                if (!h && rawRows.some(r => r && String(r[c] || '').trim() !== '')) h = `Kolom ${c + 1}`;
+                cleanedHeaders.push(h);
             }
-            while (cleanedHeaders.length > 0 && !cleanedHeaders[cleanedHeaders.length - 1]) cleanedHeaders.pop();
+            while (cleanedHeaders.length && !cleanedHeaders[cleanedHeaders.length - 1]) cleanedHeaders.pop();
+
+            const normalizeHeader = h => String(h || '')
+                .toLowerCase()
+                .replace(/[\r\n]+/g, ' ')
+                .replace(/[^a-z0-9]+/g, ' ')
+                .trim();
+
+            const findHeaderIndex = patterns => {
+                const p = patterns.map(x => String(x).toLowerCase());
+                for (let c = 0; c < cleanedHeaders.length; c++) {
+                    const h = normalizeHeader(cleanedHeaders[c]);
+                    if (p.some(x => h === x || h.includes(x))) return c;
+                }
+                return -1;
+            };
+
+            /*
+             * IMPORTANT:
+             * DATA column B (index 1) is the primary transaction-date source.
+             * Header-based date is used when available; otherwise column B is used.
+             * This prevents column A timestamp/other fields from shifting the report date.
+             */
+            let idxDate = findHeaderIndex(['tanggal', 'tanggal transaksi', 'transaction date', 'date']);
+            if (idxDate < 0) idxDate = 1; // DATA column B
+
+            let idxSegment = findHeaderIndex(['segment', 'segmen']);
+            let idxType = findHeaderIndex(['type', 'tipe', 'jenis transaksi', 'transaction type']);
+            let idxProduk = findHeaderIndex(['produk', 'product', 'sku', 'sku code', 'material', 'item']);
+            let idxZak = findHeaderIndex(['qty zak', 'quantity zak', 'qty', 'quantity', 'zak']);
+            let idxTon = findHeaderIndex(['qty ton', 'quantity ton', 'ton']);
+            let idxProjectDelivery = findHeaderIndex(['project delivery', 'project del', 'delivery']);
+
+            // Safe fallback positions for legacy DATA layout.
+            if (idxSegment < 0) idxSegment = 1;
+            if (idxType < 0) idxType = 2;
+            if (idxProduk < 0) idxProduk = 3;
+            if (idxZak < 0) idxZak = 8;
+            if (idxTon < 0) idxTon = 9;
+            if (idxProjectDelivery < 0) idxProjectDelivery = cleanedHeaders.length - 1;
 
             const validTransRows = [];
-            rawMatrixRows.forEach(r => {
-                if (!r || r.length === 0) return;
-                const rowStr = r.join('').trim(); if (!rowStr) return;
-                const rowCells = [];
+            rawRows.forEach(r => {
+                if (!r || !r.length) return;
+                const cells = [];
                 for (let c = 0; c < cleanedHeaders.length; c++) {
-                    rowCells.push(r[c] !== undefined && r[c] !== null ? r[c].toString().trim() : '');
+                    cells.push(r[c] !== undefined && r[c] !== null ? String(r[c]).trim() : '');
                 }
-                if (rowCells.some(cell => cell !== '')) validTransRows.push(rowCells);
+                if (cells.some(Boolean)) validTransRows.push(cells);
             });
 
             transactionRawData.headers = cleanedHeaders;
             transactionRawData.rows = validTransRows;
 
             validTransRows.forEach(r => {
-                let rowTimestamp = r[0] !== undefined ? r[0] : '';
-                let rowSeg = r[1] !== undefined && r[1] !== '' ? r[1] : 'GENERAL';
-                let rowType = r[2] !== undefined && r[2] !== '' ? r[2] : 'STANDARD';
-                let rowProd = r[3] !== undefined ? r[3] : '-';
-                
-                let rowZak = r[8] !== undefined ? r[8] : 0;
-                let rowTon = r[9] !== undefined ? r[9] : 0;
-                let rowProjDel = r[r.length - 1] !== undefined ? r[r.length - 1] : '-';
+                const rowTimestamp = r[idxDate] !== undefined ? r[idxDate] : '';
+                const rowSeg = r[idxSegment] || 'GENERAL';
+                const rowType = r[idxType] || 'STANDARD';
+                const rowProd = r[idxProduk] || '-';
+                const rowProjDel = r[idxProjectDelivery] || '-';
 
                 let trDateObj = new Date(NaN);
-                if (rowTimestamp && rowTimestamp.toString().trim() !== '') {
-                    const str = rowTimestamp.toString().trim();
-                    let parsedDate = new Date(NaN);
-                    const regexIndo = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2})[:\.](\d{1,2})(?:[:\.](\d{1,2}))?)?/;
-                    const matchIndo = str.match(regexIndo);
-                    if (matchIndo) {
-                        const p1 = parseInt(matchIndo[1], 10), p2 = parseInt(matchIndo[2], 10), year = parseInt(matchIndo[3], 10), hour = matchIndo[4] ? parseInt(matchIndo[4], 10) : 0, min = matchIndo[5] ? parseInt(matchIndo[5], 10) : 0, sec = matchIndo[6] ? parseInt(matchIndo[6], 10) : 0;
-                        if (p2 >= 1 && p2 <= 12 && p1 >= 1 && p1 <= 31) parsedDate = new Date(year, p2 - 1, p1, hour, min, sec);
-                        else if (p1 >= 1 && p1 <= 12 && p2 >= 1 && p2 <= 31) parsedDate = new Date(year, p1 - 1, p2, hour, min, sec);
-                    }
-                    if (isNaN(parsedDate.getTime())) parsedDate = new Date(str);
-                    
-                    if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 2000) { 
-                        trDateObj = parsedDate;
-                        if (parsedDate > latestDateObj) { latestDateObj = parsedDate; foundValidDate = true; } 
+                if (String(rowTimestamp).trim()) {
+                    trDateObj = parseReportDate(rowTimestamp);
+                    if (!isNaN(trDateObj.getTime()) && trDateObj.getFullYear() > 2000) {
+                        if (trDateObj > latestDateObj) {
+                            latestDateObj = trDateObj;
+                            foundValidDate = true;
+                        }
+                    } else {
+                        trDateObj = new Date(NaN);
                     }
                 }
 
-                const cleanZak = cleanNum(rowZak);
-                let cleanT = cleanNum(rowTon);
-                if (cleanT === 0 && cleanZak > 0) {
-                    cleanT = (cleanZak * 40) / 1000;
+                const cleanZak = cleanNum(r[idxZak]);
+                let cleanT = cleanNum(r[idxTon]);
+                if (cleanT === 0 && cleanZak !== 0) {
+                    cleanT = (Math.abs(cleanZak) * 40) / 1000;
                 }
 
                 transactionRecords.push({
-                    rawDate: rowTimestamp ? rowTimestamp.toString().trim() : '-',
+                    rawDate: String(rowTimestamp || '').trim() || '-',
                     dateObj: trDateObj,
-                    segment: rowSeg ? rowSeg.toString().trim() : 'GENERAL',
-                    type: rowType ? rowType.toString().trim() : 'STANDARD',
-                    produk: rowProd ? rowProd.toString().trim() : '-',
+                    segment: String(rowSeg || 'GENERAL').trim(),
+                    type: String(rowType || 'STANDARD').trim(),
+                    produk: String(rowProd || '-').trim(),
                     zak: cleanZak,
                     ton: cleanT,
-                    projectDelivery: rowProjDel ? rowProjDel.toString().trim() : '-',
+                    projectDelivery: String(rowProjDel || '-').trim(),
                     originalRow: r
                 });
             });
 
             if (foundValidDate) {
-                const dateOptions = { day: '2-digit', month: 'short', year: 'numeric' }, timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
-                lastUpdateDateStr = latestDateObj.toLocaleDateString('en-GB', dateOptions); 
+                const dateOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+                const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
+                lastUpdateDateStr = latestDateObj.toLocaleDateString('en-GB', dateOptions);
                 lastUpdateTimeStr = latestDateObj.toLocaleTimeString('en-GB', timeOptions);
             }
         }
@@ -1665,10 +1764,586 @@
             if(summaryData.length === 0) summaryData = FALLBACK_SUMMARY_DATA;
         }
 
+
+        function parseReportDate(value) {
+            if (value === null || value === undefined || value === '') return new Date(NaN);
+            const str = value.toString().trim();
+            let m = str.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2})[:\.](\d{1,2})(?:[:\.](\d{1,2}))?)?/);
+            if (m) {
+                const d = new Date(
+                    Number(m[3]), Number(m[2]) - 1, Number(m[1]),
+                    Number(m[4] || 0), Number(m[5] || 0), Number(m[6] || 0)
+                );
+                if (!isNaN(d.getTime())) return d;
+            }
+            const d = new Date(str);
+            return d;
+        }
+
+        function reportDateKey(value) {
+            const d = value instanceof Date ? value : parseReportDate(value);
+            if (isNaN(d.getTime())) return '';
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function getExecMovementBySku(selectedDate) {
+            const movement = {};
+            const targetKey = reportDateKey(selectedDate);
+            if (!targetKey) return movement;
+
+            const addMove = (skuRaw, direction, qty) => {
+                const sku = String(skuRaw || '').trim().toUpperCase();
+                const amount = Math.abs(Number(qty) || 0);
+                if (!sku || sku === '-' || amount === 0) return;
+                if (!movement[sku]) movement[sku] = { in: 0, out: 0 };
+                movement[sku][direction] += amount;
+            };
+
+            (Array.isArray(transactionRecords) ? transactionRecords : []).forEach(r => {
+                const key = reportDateKey(r.dateObj || r.rawDate);
+
+                // STRICT DATE FILTER: only transactions on the selected date.
+                if (!key || key !== targetKey) return;
+
+                const type = String(r.type || '').trim().toUpperCase();
+                const qty = Number(r.zak) || 0;
+                if (!qty) return;
+
+                const isOutputProduction =
+                    type === 'OUTPUT PRODUCTION' ||
+                    type.includes('OUTPUT PRODUCTION') ||
+                    (type.includes('OUTPUT') && type.includes('PRODUCTION'));
+
+                const isDelivery =
+                    type === 'DELIVERY' ||
+                    type.includes('DELIVERY');
+
+                let direction = '';
+                let sku = '';
+
+                if (isOutputProduction) {
+                    direction = 'in';
+                    // Output Produksi uses Produk/SKU as the inbound SKU.
+                    sku = r.produk || r.projectDelivery;
+                } else if (isDelivery) {
+                    direction = 'out';
+                    // Delivery uses Project Delivery first to avoid double counting.
+                    sku = r.projectDelivery || r.produk;
+                } else if (qty > 0) {
+                    direction = 'in';
+                    sku = r.produk || r.projectDelivery;
+                } else if (qty < 0) {
+                    direction = 'out';
+                    sku = r.projectDelivery || r.produk;
+                }
+
+                if (direction && sku) addMove(sku, direction, qty);
+            });
+
+            return movement;
+        }
+
+        function getExecOpeningBySku(selectedDate) {
+            const opening = {};
+            const targetKey = reportDateKey(selectedDate);
+            if (!targetKey) return opening;
+
+            /*
+             * LOGIC OPENING BALANCE:
+             * Jika user memilih tanggal 22, maka Opening Balance = stok H-1,
+             * yaitu posisi stok pada tanggal 21.
+             *
+             * Karena summaryData merupakan snapshot stok terakhir (closing/current stock),
+             * maka untuk mendapatkan stok H-1:
+             *
+             * Opening H-1 = Closing Stock terakhir
+             *               - seluruh net movement mulai tanggal terpilih
+             *                 sampai tanggal snapshot terakhir.
+             *
+             * Contoh:
+             * Stock akhir 22 = 10,000
+             * IN tanggal 22 = 500
+             * OUT tanggal 22 = 300
+             * Opening tanggal 22 = 10,000 - (500 - 300) = 9,800
+             */
+
+            const netAfter = {};
+
+            (Array.isArray(transactionRecords) ? transactionRecords : []).forEach(r => {
+                const key = reportDateKey(r.dateObj || r.rawDate);
+
+                // Termasuk tanggal terpilih karena opening tanggal 22
+                // harus merupakan saldo sebelum transaksi tanggal 22.
+                if (!key || key < targetKey) return;
+
+                const aliases = [r.produk, r.projectDelivery]
+                    .filter(v =>
+                        v !== undefined &&
+                        v !== null &&
+                        String(v).trim() !== '' &&
+                        String(v).trim() !== '-'
+                    );
+
+                const qty = Number(r.zak) || 0;
+                const type = String(r.type || '').trim().toUpperCase();
+
+                const isOutputProduction =
+                    type === 'OUTPUT PRODUCTION' ||
+                    type.includes('OUTPUT PRODUCTION') ||
+                    (type.includes('OUTPUT') && type.includes('PRODUCTION'));
+
+                const isDelivery =
+                    type === 'DELIVERY' ||
+                    type.includes('DELIVERY');
+
+                let signedMovement = 0;
+
+                if (isOutputProduction) {
+                    // Production = penambahan stok.
+                    signedMovement = Math.abs(qty);
+                } else if (isDelivery) {
+                    // Delivery = pengurangan stok.
+                    signedMovement = -Math.abs(qty);
+                } else if (qty > 0) {
+                    // Transaksi positif lain = IN.
+                    signedMovement = qty;
+                } else if (qty < 0) {
+                    // Transaksi negatif lain = OUT.
+                    signedMovement = qty;
+                }
+
+                aliases.forEach(alias => {
+                    const sku = String(alias).trim().toUpperCase();
+                    if (!netAfter[sku]) netAfter[sku] = 0;
+                    netAfter[sku] += signedMovement;
+                });
+            });
+
+            (Array.isArray(summaryData) ? summaryData : []).forEach(item => {
+                const sku = String(item.sku || '').trim().toUpperCase();
+                if (!sku) return;
+
+                const closingStock = Number(item.qtyZak) || 0;
+                const netMovementFromSelectedDate =
+                    Number(netAfter[sku]) || 0;
+
+                // Opening tanggal terpilih = stok H-1.
+                opening[sku] = closingStock - netMovementFromSelectedDate;
+            });
+
+            return opening;
+        }
+
+        function renderExecReportDetail() {
+            const tbody = document.getElementById('execDetailReportTableBody');
+            if (!tbody) return;
+
+            const dateInput = document.getElementById('execDetailDateFilter');
+            const searchInput = document.getElementById('execDetailSearch');
+            const selectedDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
+            const query = (searchInput && searchInput.value ? searchInput.value : '').trim().toLowerCase();
+
+            const movement = getExecMovementBySku(selectedDate);
+            const opening = getExecOpeningBySku(selectedDate);
+
+            const movementCount = Object.keys(movement).length;
+            const totalInData = Object.values(movement).reduce((s, x) => s + (Number(x.in) || 0), 0);
+            const totalOutData = Object.values(movement).reduce((s, x) => s + (Number(x.out) || 0), 0);
+
+            const rows = (Array.isArray(summaryData) ? summaryData : []).filter(item => {
+                const text = `${item.segment || ''} ${item.sku || ''}`.toLowerCase();
+                return !query || text.includes(query);
+            });
+
+            const label = document.getElementById('execDetailPeriodLabel');
+            if (label) label.innerText = `Date: ${selectedDate} | DATA SKU: ${movementCount} | IN: ${fmtNum(totalInData)} | OUT: ${fmtNum(totalOutData)}`;
+
+            if (!rows.length) {
+                tbody.innerHTML = `<tr><td colspan="8" class="px-3 md:px-5 py-8 text-center text-textSecondary">Data Kosong</td></tr>`;
+                return;
+            }
+
+            const customOrder = ['RETAIL','PROJECT','GENERAL'];
+            // Urutan SKU mengikuti persis urutan summaryData / Executive Report Summary.
+            // Jangan di-sort berdasarkan nama SKU karena Summary mempertahankan urutan master data.
+            const segmentRank = seg => {
+                const idx = customOrder.indexOf(String(seg || '').toUpperCase());
+                return idx < 0 ? 999 : idx;
+            };
+            rows.sort((a, b) => {
+                const sa = segmentRank(a.segment);
+                const sb = segmentRank(b.segment);
+                return sa !== sb ? sa - sb : 0;
+            });
+
+            let html = '';
+            let totalOpen = 0, totalIn = 0, totalOut = 0, totalZak = 0, totalTon = 0;
+
+            rows.forEach(item => {
+                const sku = String(item.sku || '').trim().toUpperCase();
+                const mv = movement[sku] || {in:0, out:0};
+                const open = Number(opening[sku]) || 0;
+                const qtyZak = Number(item.qtyZak) || 0;
+                const qtyTon = Number(item.qtyTon) || 0;
+
+                totalOpen += open; totalIn += mv.in; totalOut += mv.out;
+                totalZak += qtyZak; totalTon += qtyTon;
+
+                html += `<tr class="table-row-hover border-b border-borderMain/30 text-textSecondary transition-colors">
+                    <td class="px-3 md:px-5 py-2 text-left border-r border-borderMain/30">${item.segment || 'GENERAL'}</td>
+                    <td class="px-3 md:px-5 py-2 font-bold text-white border-r border-borderMain/30">${item.sku || '-'}</td>
+                    <td class="px-3 md:px-5 py-2 text-right border-r border-borderMain/30">${fmtNum(item.weight)}</td>
+                    <td class="px-3 md:px-5 py-2 text-right border-r border-borderMain/30 text-accentPurple font-bold">${fmtNum(open)}</td>
+                    <td class="px-3 md:px-5 py-2 text-right border-r border-borderMain/30 text-statusSuccess font-bold">${fmtNum(mv.in)}</td>
+                    <td class="px-3 md:px-5 py-2 text-right border-r border-borderMain/30 text-statusDanger font-bold">${fmtNum(mv.out)}</td>
+                    <td class="px-3 md:px-5 py-2 text-right border-r border-borderMain/30">${fmtNum(qtyZak)}</td>
+                    <td class="px-3 md:px-5 py-2 text-right font-bold text-white">${fmtDec(qtyTon)}</td>
+                </tr>`;
+            });
+
+            html += `<tr class="bg-[#1c2e50] border-t-2 border-accentCyan/40 font-black text-white">
+                <td colspan="3" class="px-3 md:px-5 py-2 text-right">TOTAL</td>
+                <td class="px-3 md:px-5 py-2 text-right text-accentPurple">${fmtNum(totalOpen)}</td>
+                <td class="px-3 md:px-5 py-2 text-right text-statusSuccess">${fmtNum(totalIn)}</td>
+                <td class="px-3 md:px-5 py-2 text-right text-statusDanger">${fmtNum(totalOut)}</td>
+                <td class="px-3 md:px-5 py-2 text-right">${fmtNum(totalZak)}</td>
+                <td class="px-3 md:px-5 py-2 text-right">${fmtDec(totalTon)}</td>
+            </tr>`;
+            tbody.innerHTML = html;
+        }
+
+        function exportExecutiveDetailReport() {
+            showToast('Preparing Report...', 'Generating Executive Detail Excel Format...', 'info');
+            renderExecReportDetail();
+
+            const dateSelected = document.getElementById('execDetailDateFilter')?.value || new Date().toISOString().split('T')[0];
+            const movement = getExecMovementBySku(dateSelected);
+            const opening = getExecOpeningBySku(dateSelected);
+
+            const rows = (Array.isArray(summaryData) ? summaryData : []).map(item => {
+                const sku = String(item.sku || '').trim().toUpperCase();
+                const mv = movement[sku] || { in: 0, out: 0 };
+
+                return {
+                    segment: item.segment || 'GENERAL',
+                    sku: item.sku || '-',
+                    weight: Number(item.weight) || 0,
+                    opening: Number(opening[sku]) || 0,
+                    in: Number(mv.in) || 0,
+                    out: Number(mv.out) || 0,
+                    qtyZak: Number(item.qtyZak) || 0,
+                    qtyTon: Number(item.qtyTon) || 0
+                };
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = {};
+
+            // === STANDARD TEMPLATE STYLE — SAME AS EXECUTIVE REPORT ===
+            const borderThin = { style: "thin", color: { rgb: "000000" } };
+            const borderAll = {
+                top: borderThin,
+                bottom: borderThin,
+                left: borderThin,
+                right: borderThin
+            };
+
+            const styleCompany = {
+                font: { name: "Arial", sz: 14, bold: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+
+            const styleTitle = {
+                font: { name: "Arial", sz: 12, bold: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+
+            const styleFilter = {
+                font: { name: "Arial", sz: 10, italic: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+
+            const styleHeader = {
+                font: { name: "Arial", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+                fill: { fgColor: { rgb: "1F4E78" } },
+                alignment: { horizontal: "center", vertical: "center", wrapText: true },
+                border: borderAll
+            };
+
+            const styleSegmentRow = {
+                font: { name: "Arial", sz: 10, bold: true, color: { rgb: "000000" } },
+                fill: { fgColor: { rgb: "DCE6F1" } },
+                alignment: { horizontal: "left", vertical: "center" },
+                border: borderAll
+            };
+
+            const styleDataLeft = {
+                font: { name: "Arial", sz: 10, color: { rgb: "000000" } },
+                alignment: { horizontal: "left", vertical: "center" },
+                border: borderAll
+            };
+
+            const styleDataRight = {
+                font: { name: "Arial", sz: 10, color: { rgb: "000000" } },
+                alignment: { horizontal: "right", vertical: "center" },
+                border: borderAll
+            };
+
+            const styleDataRightBold = {
+                font: { name: "Arial", sz: 10, bold: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "right", vertical: "center" },
+                border: borderAll
+            };
+
+            const styleGrandTotal = {
+                font: { name: "Arial", sz: 11, bold: true, color: { rgb: "000000" } },
+                fill: { fgColor: { rgb: "C5D9F1" } },
+                alignment: { horizontal: "right", vertical: "center" },
+                border: {
+                    top: borderThin,
+                    bottom: { style: "double", color: { rgb: "000000" } },
+                    left: borderThin,
+                    right: borderThin
+                }
+            };
+
+            const noteBoldStyle = {
+                font: { name: "Arial", sz: 9, bold: true, italic: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "left", vertical: "top" }
+            };
+
+            const noteStyle = {
+                font: { name: "Arial", sz: 9, italic: true, color: { rgb: "000000" } },
+                alignment: { horizontal: "left", vertical: "top", wrapText: true }
+            };
+
+            function setCell(r, c, val, style, t, z) {
+                const cell = { v: val, s: style };
+                if (t) cell.t = t;
+                else if (typeof val === 'number') cell.t = 'n';
+                else cell.t = 's';
+                if (z) cell.z = z;
+                ws[XLSX.utils.encode_cell({ r, c })] = cell;
+            }
+
+            // === HEADER ===
+            setCell(0, 0, "MORTAR INDONESIA", styleCompany);
+            setCell(1, 0, "EXECUTIVE REPORT DETAIL", styleTitle);
+            setCell(2, 0, `Date: ${dateSelected}`, styleFilter);
+
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } }
+            ];
+
+            const headers = [
+                "Segment",
+                "SKU Code",
+                "Weight (KG)",
+                "Opening Balance Stock (ZAK)",
+                "Stock In",
+                "Stock Out",
+                "Qty (ZAK)",
+                "Qty (TON)"
+            ];
+
+            headers.forEach((h, i) => setCell(4, i, h, styleHeader));
+
+            // === GROUP BY SEGMENT — SAME TEMPLATE AS EXECUTIVE SUMMARY ===
+            const customOrder = ['RETAIL', 'PROJECT', 'GENERAL'];
+            const grouped = {};
+
+            rows.forEach(item => {
+                const seg = String(item.segment || 'GENERAL').toUpperCase();
+                if (!grouped[seg]) grouped[seg] = [];
+                grouped[seg].push(item);
+            });
+
+            const segments = Object.keys(grouped).sort((a, b) => {
+                let ia = customOrder.indexOf(a);
+                let ib = customOrder.indexOf(b);
+                if (ia === -1) ia = 999;
+                if (ib === -1) ib = 999;
+                return ia !== ib ? ia - ib : a.localeCompare(b);
+            });
+
+            let currentRow = 5;
+            let grandOpening = 0;
+            let grandIn = 0;
+            let grandOut = 0;
+            let grandQtyZak = 0;
+            let grandQtyTon = 0;
+
+            segments.forEach(seg => {
+                // Segment divider
+                setCell(currentRow, 0, seg, styleSegmentRow);
+                for (let c = 1; c < 8; c++) setCell(currentRow, c, "", styleSegmentRow);
+
+                ws['!merges'].push({
+                    s: { r: currentRow, c: 0 },
+                    e: { r: currentRow, c: 7 }
+                });
+
+                currentRow++;
+
+                let subOpening = 0;
+                let subIn = 0;
+                let subOut = 0;
+                let subQtyZak = 0;
+                let subQtyTon = 0;
+
+                // Jangan sort SKU secara alfabet.
+                // summaryData adalah sumber urutan resmi Summary, sehingga
+                // urutan Detail Export harus identik dengan Summary.
+                grouped[seg].forEach(item => {
+                    setCell(currentRow, 0, item.segment, styleDataLeft);
+                    setCell(currentRow, 1, item.sku, styleDataLeft);
+                    setCell(currentRow, 2, item.weight, styleDataRight, 'n', '#,##0');
+                    setCell(currentRow, 3, item.opening, styleDataRight, 'n', '#,##0');
+                    setCell(currentRow, 4, item.in, styleDataRight, 'n', '#,##0');
+                    setCell(currentRow, 5, item.out, styleDataRight, 'n', '#,##0');
+                    setCell(currentRow, 6, item.qtyZak, styleDataRight, 'n', '#,##0');
+                    setCell(currentRow, 7, item.qtyTon, styleDataRightBold, 'n', '#,##0.0');
+
+                    subOpening += item.opening;
+                    subIn += item.in;
+                    subOut += item.out;
+                    subQtyZak += item.qtyZak;
+                    subQtyTon += item.qtyTon;
+
+                    currentRow++;
+                });
+
+                // Subtotal
+                setCell(currentRow, 0, `Subtotal ${seg}`, styleSegmentRow);
+                ws['!merges'].push({
+                    s: { r: currentRow, c: 0 },
+                    e: { r: currentRow, c: 2 }
+                });
+
+                setCell(currentRow, 3, subOpening, styleDataRightBold, 'n', '#,##0');
+                setCell(currentRow, 4, subIn, styleDataRightBold, 'n', '#,##0');
+                setCell(currentRow, 5, subOut, styleDataRightBold, 'n', '#,##0');
+                setCell(currentRow, 6, subQtyZak, styleDataRightBold, 'n', '#,##0');
+                setCell(currentRow, 7, subQtyTon, styleDataRightBold, 'n', '#,##0.0');
+
+                currentRow++;
+
+                grandOpening += subOpening;
+                grandIn += subIn;
+                grandOut += subOut;
+                grandQtyZak += subQtyZak;
+                grandQtyTon += subQtyTon;
+            });
+
+            // === GRAND TOTAL ===
+            setCell(currentRow, 0, "GRAND TOTAL", styleGrandTotal);
+            for (let c = 1; c < 3; c++) setCell(currentRow, c, "", styleGrandTotal);
+
+            ws['!merges'].push({
+                s: { r: currentRow, c: 0 },
+                e: { r: currentRow, c: 2 }
+            });
+
+            setCell(currentRow, 3, grandOpening, styleGrandTotal, 'n', '#,##0');
+            setCell(currentRow, 4, grandIn, styleGrandTotal, 'n', '#,##0');
+            setCell(currentRow, 5, grandOut, styleGrandTotal, 'n', '#,##0');
+            setCell(currentRow, 6, grandQtyZak, styleGrandTotal, 'n', '#,##0');
+            setCell(currentRow, 7, grandQtyTon, styleGrandTotal, 'n', '#,##0.0');
+
+            // === NOTES — SAME TEMPLATE LANGUAGE ===
+            currentRow += 2;
+            setCell(currentRow, 0, "Catatan:", noteBoldStyle);
+
+            currentRow++;
+            setCell(
+                currentRow,
+                0,
+                "1. Stock Out mencakup seluruh pergerakan stok keluar dari Warehouse Finished Goods, termasuk Delivery, sample, damaged goods, pemakaian internal, serta pengeluaran lainnya.",
+                noteStyle
+            );
+            ws['!merges'].push({
+                s: { r: currentRow, c: 0 },
+                e: { r: currentRow, c: 7 }
+            });
+            if (!ws['!rows']) ws['!rows'] = [];
+            ws['!rows'][currentRow] = { hpt: 35 };
+
+            currentRow += 2;
+            setCell(
+                currentRow,
+                0,
+                "2. Stock In merupakan output produksi (Output Production) dan transaksi lainnya dengan nilai Qty positif yang diterima di Warehouse Finished Goods.",
+                noteStyle
+            );
+            ws['!merges'].push({
+                s: { r: currentRow, c: 0 },
+                e: { r: currentRow, c: 7 }
+            });
+            ws['!rows'][currentRow] = { hpt: 35 };
+
+            currentRow += 1;
+            setCell(
+                currentRow,
+                0,
+                "3. Opening Balance Stock merupakan posisi stok H-1. Jika tanggal laporan dipilih tanggal 22, maka Opening Balance adalah posisi stok tanggal 21, dihitung dari stok akhir dikurangi net movement mulai tanggal 22.",
+                noteStyle
+            );
+            ws['!merges'].push({
+                s: { r: currentRow, c: 0 },
+                e: { r: currentRow, c: 7 }
+            });
+            ws['!rows'][currentRow] = { hpt: 35 };
+
+            ws['!ref'] = XLSX.utils.encode_range({
+                s: { r: 0, c: 0 },
+                e: { r: currentRow, c: 7 }
+            });
+
+            // Column widths mengikuti template bawaan, disesuaikan untuk 8 kolom.
+            ws['!cols'] = [
+                { wch: 14 },
+                { wch: 22 },
+                { wch: 13 },
+                { wch: 25 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 14 },
+                { wch: 14 }
+            ];
+
+            ws['!pageSetup'] = {
+                paperSize: 9,
+                orientation: 'landscape',
+                fitToWidth: 1,
+                fitToHeight: 0
+            };
+
+            ws['!pageMargins'] = {
+                left: 0.25,
+                right: 0.25,
+                top: 0.5,
+                bottom: 0.5,
+                header: 0.2,
+                footer: 0.2
+            };
+
+            XLSX.utils.book_append_sheet(wb, ws, "Report Detail");
+            XLSX.writeFile(wb, `Executive_Detail_${dateSelected.replace(/-/g, '')}.xlsx`);
+
+            setTimeout(() => {
+                showToast('Export Success', 'Executive Detail berhasil diunduh dengan template standar.', 'success');
+            }, 500);
+        }
+
         function generateExecReportData() {
+            const selectedDate = document.getElementById('execDateFilter')?.value || new Date().toISOString().split('T')[0];
+            const movement = getExecMovementBySku(selectedDate);
             execReportData = summaryData.map(item => {
-                const existing = execReportData.find(e => e.sku === item.sku && e.segment === item.segment);
-                return { ...item, stokIn: existing && existing.stokIn !== undefined ? existing.stokIn : '', stokOut: existing && existing.stokOut !== undefined ? existing.stokOut : '' };
+                const sku = String(item.sku || '').trim().toUpperCase();
+                const mv = movement[sku] || { in: 0, out: 0 };
+                return { ...item, stokIn: mv.in || 0, stokOut: mv.out || 0 };
             });
         }
         
@@ -1769,13 +2444,29 @@
             let totalTonRetail = 0, totalTonProject = 0;
             const uniqueSKUs = new Set();
             
-            summaryData.forEach(item => { 
-                totalWeight += item.weight; 
-                totalZakSummary += item.qtyZak; 
-                totalTon += item.qtyTon; 
-                if(item.sku && item.sku !== '-') uniqueSKUs.add(item.sku); 
-                if(item.segment.toUpperCase() === 'RETAIL') totalTonRetail += item.qtyTon;
-                if(item.segment.toUpperCase() === 'PROJECT') totalTonProject += item.qtyTon;
+            // KN1 dan K2 disimpan pada rack/storage terpisah,
+            // sehingga tidak termasuk kapasitas storage pallet.
+            const isRackSeparatedSku = (skuRaw) => {
+                const sku = String(skuRaw || '').trim().toUpperCase();
+                // Hanya KN1 yang berada di rack terpisah.
+                // K2 tetap masuk ke storage pallet.
+                return sku === 'KN1' || sku.startsWith('KN1-');
+            };
+
+            summaryData.forEach(item => {
+                totalWeight += item.weight;
+                totalZakSummary += item.qtyZak;
+                if(item.sku && item.sku !== '-') uniqueSKUs.add(item.sku);
+
+                const itemTon = Number(item.qtyTon) || 0;
+
+                // Kapasitas pallet hanya menghitung SKU yang berada di
+                // storage pallet. KN1 dan K2 dikeluarkan.
+                if (!isRackSeparatedSku(item.sku)) {
+                    totalTon += itemTon;
+                    if(item.segment.toUpperCase() === 'RETAIL') totalTonRetail += itemTon;
+                    if(item.segment.toUpperCase() === 'PROJECT') totalTonProject += itemTon;
+                }
             });
             
             const todayObj = new Date();
@@ -1834,10 +2525,22 @@
                 else avgEl.className = 'font-mono font-bold text-textSecondary text-[10px] md:text-xs';
             }
 
-            let masterZakSum = totalZakSummary + todayZakDelta;
-            let adjustedTotalTon = totalTon + (todayZakDelta * 40 / 1000);
+            /*
+             * KAPASITAS GUDANG HARUS MENGIKUTI TOTAL FINISHED GOODS STOCK SUMMARY REPORT.
+             * summaryData adalah sumber angka yang sama dengan tabel Summary:
+             * totalTon = SUM Qty (TON) Finished Goods Stock Summary Report, dikurangi SKU KN1 karena storage-nya terpisah dari storage pallet. K2 tetap dihitung dalam storage pallet.
+             *
+             * Sebelumnya KPI menambahkan todayZakDelta lagi sehingga stok dihitung
+             * dua kali dan hasilnya berbeda dengan tabel.
+             */
+            const masterZakSum = totalZakSummary;
+            const adjustedTotalTon = totalTon;
 
-            const WAREHOUSE_CAPACITY_TON = 2737, spacePct = WAREHOUSE_CAPACITY_TON > 0 ? (adjustedTotalTon / WAREHOUSE_CAPACITY_TON) * 100 : 0, remainingTon = Math.max(0, WAREHOUSE_CAPACITY_TON - adjustedTotalTon);
+            const WAREHOUSE_CAPACITY_TON = 2737;
+            const spacePct = WAREHOUSE_CAPACITY_TON > 0
+                ? (adjustedTotalTon / WAREHOUSE_CAPACITY_TON) * 100
+                : 0;
+            const remainingTon = Math.max(0, WAREHOUSE_CAPACITY_TON - adjustedTotalTon);
             if(document.getElementById('kpiSpacePercent')) document.getElementById('kpiSpacePercent').innerText = `${fmtDec(spacePct)}%`;
             if(document.getElementById('kpiSpaceCurrent')) document.getElementById('kpiSpaceCurrent').innerText = `${fmtDec(adjustedTotalTon)} Ton`;
             if(document.getElementById('kpiSpaceRemaining')) document.getElementById('kpiSpaceRemaining').innerText = `${fmtDec(remainingTon)} Ton`;
@@ -1875,7 +2578,7 @@
             // Update Hover Insight Texts for KPIs
             let insight1 = '';
             if (spacePct > 90) insight1 = `Kritis! Gudang melebihi 90% kapasitas maksimal (${fmtNum(WAREHOUSE_CAPACITY_TON)} Ton). Segera aktifkan Staging Area tambahan dan percepat proses Delivery (Sisa: ${fmtDec(remainingTon)} Ton).`;
-            else if (spacePct > 75) insight1 = `Waspada! Utilisasi gudang mencapai ${fmtDec(spacePct)}%. Manajemen ruang pallet perlu dioptimalkan untuk menampung antrean produksi.`;
+            else if (spacePct > 75) insight1 = `Waspada! Utilisasi gudang mencapai ${fmtDec(spacePct)}%. Perhitungan mengikuti Finished Goods Stock Summary Report setelah dikurangi SKU KN1 (rack terpisah). K2 tetap masuk storage pallet.`;
             else insight1 = `Kondisi Optimal. Utilisasi ruang ${fmtDec(spacePct)}%. Masih tersedia kapasitas ${fmtDec(remainingTon)} Ton.`;
             
             const kpi1El = document.getElementById('kpi1InsightText');
@@ -1911,6 +2614,10 @@
 
         function renderExecReportPreview() {
             const tbody = document.getElementById('execReportTableBody'); if(!tbody) return;
+
+            // Rebuild from source DATA every time the date changes.
+            // Never carry IN/OUT values from the previous selected date.
+            execReportData = [];
             generateExecReportData();
             const grouped = {};
             execReportData.forEach(item => {
@@ -1931,7 +2638,7 @@
             let html = '', currentSegment = '';
             sortedData.forEach(item => {
                 if(item.segment !== currentSegment) { html += `<tr class="bg-[#1c2e50] border-y border-borderMain"><td colspan="7" class="px-3 md:px-5 py-1.5 md:py-2 font-bold text-white text-[9px] md:text-[10px] tracking-widest uppercase"><i class="ph-bold ph-caret-down mr-1 text-textSecondary"></i> ${item.segment}</td></tr>`; currentSegment = item.segment; }
-                html += `<tr class="table-row-hover border-b border-borderMain/30 text-textSecondary transition-colors"><td class="px-3 md:px-5 py-1.5 md:py-2 pl-6 md:pl-8 font-medium border-r border-borderMain/30 text-[10px] md:text-xs">${item.segment}</td><td class="px-3 md:px-5 py-1.5 md:py-2 font-bold text-white border-r border-borderMain/30 text-[10px] md:text-xs">${item.sku}</td><td class="px-3 md:px-5 py-1.5 md:py-2 text-right border-r border-borderMain/30 text-[10px] md:text-xs">${fmtNum(item.weight)}</td><td class="px-1 md:px-2 py-1 text-right border-r border-borderMain/30"><input type="number" min="0" value="${item.stokIn}" oninput="updateExecInput('${item.segment}', '${item.sku}', 'stokIn', this.value)" class="w-12 md:w-16 bg-bgPrimary/50 border border-borderMain/50 hover:border-statusSuccess/50 rounded px-1.5 md:px-2 py-0.5 md:py-1 text-right text-statusSuccess font-bold focus:outline-none focus:border-statusSuccess focus:bg-statusSuccess/10 transition-colors placeholder:text-statusSuccess/20 text-[10px] md:text-xs" placeholder="0"></td><td class="px-1 md:px-2 py-1 text-right border-r border-borderMain/30"><input type="number" min="0" value="${item.stokOut}" oninput="updateExecInput('${item.segment}', '${item.sku}', 'stokOut', this.value)" class="w-12 md:w-16 bg-bgPrimary/50 border border-borderMain/50 hover:border-statusDanger/50 rounded px-1.5 md:px-2 py-0.5 md:py-1 text-right text-statusDanger font-bold focus:outline-none focus:border-statusDanger focus:bg-statusDanger/10 transition-colors placeholder:text-statusDanger/20 text-[10px] md:text-xs" placeholder="0"></td><td class="px-3 md:px-5 py-1.5 md:py-2 text-right border-r border-borderMain/30 text-[10px] md:text-xs">${fmtNum(item.qtyZak)}</td><td class="px-3 md:px-5 py-1.5 md:py-2 text-right font-bold text-white text-[10px] md:text-xs">${fmtDec(item.qtyTon)}</td></tr>`;
+                html += `<tr class="table-row-hover border-b border-borderMain/30 text-textSecondary transition-colors"><td class="px-3 md:px-5 py-1.5 md:py-2 pl-6 md:pl-8 font-medium border-r border-borderMain/30 text-[10px] md:text-xs">${item.segment}</td><td class="px-3 md:px-5 py-1.5 md:py-2 font-bold text-white border-r border-borderMain/30 text-[10px] md:text-xs">${item.sku}</td><td class="px-3 md:px-5 py-1.5 md:py-2 text-right border-r border-borderMain/30 text-[10px] md:text-xs">${fmtNum(item.weight)}</td><td class="px-1 md:px-2 py-1 text-right border-r border-borderMain/30"><span class="inline-block min-w-12 md:min-w-16 text-statusSuccess font-bold">${fmtNum(item.stokIn)}</span></td><td class="px-1 md:px-2 py-1 text-right border-r border-borderMain/30"><span class="inline-block min-w-12 md:min-w-16 text-statusDanger font-bold">${fmtNum(item.stokOut)}</span></td><td class="px-3 md:px-5 py-1.5 md:py-2 text-right border-r border-borderMain/30 text-[10px] md:text-xs">${fmtNum(item.qtyZak)}</td><td class="px-3 md:px-5 py-1.5 md:py-2 text-right font-bold text-white text-[10px] md:text-xs">${fmtDec(item.qtyTon)}</td></tr>`;
             });
             tbody.innerHTML = html;
         }
@@ -3331,6 +4038,257 @@
             renderLocalRisk();
         }
 
+
+        async function exportAIExecutivePPT(event) {
+            if (event) { event.preventDefault(); event.stopPropagation(); }
+
+            const btn = document.getElementById('aiPptBtn');
+
+            const ensurePptxGenLoaded = () => new Promise((resolve, reject) => {
+                // Official browser bundle exposes PptxGenJS on window.
+                if (typeof window.PptxGenJS === 'function') {
+                    resolve(window.PptxGenJS);
+                    return;
+                }
+
+                // Backward compatibility for older bundles.
+                if (typeof window.pptxgen === 'function') {
+                    resolve(window.pptxgen);
+                    return;
+                }
+
+                const existing = document.querySelector('script[data-pptxgen-loader="1"]');
+                if (existing) {
+                    existing.addEventListener('load', () => {
+                        const Ctor = window.PptxGenJS || window.pptxgen;
+                        Ctor ? resolve(Ctor) : reject(new Error('PptxGenJS termuat tetapi constructor tidak ditemukan.'));
+                    }, {once:true});
+                    existing.addEventListener('error', () => reject(new Error('CDN PowerPoint gagal dimuat.')), {once:true});
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@latest/dist/pptxgen.bundle.js';
+                script.async = true;
+                script.dataset.pptxgenLoader = '1';
+                script.onload = () => {
+                    const Ctor = window.PptxGenJS || window.pptxgen;
+                    Ctor ? resolve(Ctor) : reject(new Error('PptxGenJS termuat tetapi constructor tidak ditemukan.'));
+                };
+                script.onerror = () => reject(new Error('CDN PowerPoint gagal dimuat. Pastikan browser dapat mengakses jsDelivr/GitHub.'));
+                document.head.appendChild(script);
+            });
+
+            let PptxGenJS;
+            try {
+                PptxGenJS = await ensurePptxGenLoaded();
+            } catch (loadErr) {
+                showToast('PowerPoint', loadErr.message, 'warning');
+                return;
+            }
+            const original = btn ? btn.innerHTML : '';
+            try {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Preparing...';
+                }
+
+                // Pastikan visual dashboard dan KPI terbaru sudah tersedia.
+                try { updateAIVisuals(); } catch (e) { console.warn('PPT visual refresh:', e); }
+
+                const pptx = new PptxGenJS();
+                pptx.layout = 'LAYOUT_WIDE'; // 13.333 x 7.5
+                pptx.author = 'Mortar Indonesia';
+                pptx.company = 'Mortar Indonesia';
+                pptx.subject = 'AI Stock Intelligence Dashboard';
+                pptx.title = 'AI Stock Intelligence — Executive Management Review';
+                pptx.lang = 'id-ID';
+                pptx.theme = {
+                    headFontFace: 'Aptos Display',
+                    bodyFontFace: 'Aptos',
+                    lang: 'id-ID'
+                };
+                pptx.defineSlideMaster({
+                    title: 'EXEC_MASTER',
+                    background: { color: 'FFFFFF' },
+                    objects: [
+                        { rect: { x:0, y:0, w:13.333, h:0.10, fill:{color:'173B66'}, line:{color:'173B66'} } },
+                        { rect: { x:0.45, y:6.82, w:12.43, h:0.01, fill:{color:'D9E2F0'}, line:{color:'D9E2F0'} } },
+                        { text: { text:'MORTAR INDONESIA  |  SUPPLY CHAIN INTELLIGENCE', options:{x:0.55,y:6.91,w:7.5,h:0.18,fontFace:'Aptos',fontSize:7,color:'6B7280',margin:0} } },
+                        { text: { text:'CONFIDENTIAL — EXECUTIVE MANAGEMENT REVIEW', options:{x:8.2,y:6.91,w:4.3,h:0.18,fontFace:'Aptos',fontSize:7,color:'6B7280',align:'right',margin:0} } }
+                    ],
+                    slideNumber: { x:12.65, y:6.86, color:'6B7280', fontFace:'Aptos', fontSize:7 }
+                });
+
+                const C = {
+                    navy:'173B66', panel:'F5F7FA', panel2:'EAF1F8',
+                    cyan:'007F9E', purple:'5B4BC4', green:'168A5B',
+                    red:'C63D52', amber:'B77900', white:'FFFFFF',
+                    muted:'667085', line:'D9E2F0', black:'172033'
+                };
+
+                const safe = (v, fallback='-') => {
+                    const s = String(v ?? '').trim();
+                    return s || fallback;
+                };
+                const n = v => Number(v) || 0;
+                const fmt = v => {
+                    try { return new Intl.NumberFormat('id-ID',{maximumFractionDigits:1}).format(n(v)); }
+                    catch(e) { return String(v); }
+                };
+                const aiTextEl = document.getElementById('aiResult');
+                const aiText = aiTextEl ? aiTextEl.innerText.trim() : '';
+
+                const snapTon = document.getElementById('aiSnapTon')?.innerText || '0 Ton';
+                const snapSku = document.getElementById('aiSnapSku')?.innerText || '0';
+                const snapIn = document.getElementById('aiSnapIn')?.innerText || '0';
+                const snapOut = document.getElementById('aiSnapOut')?.innerText || '0';
+
+                // --- Helpers ---
+                function addTitle(slide, title, subtitle='') {
+                    slide.addText(title, {x:0.55,y:0.38,w:8.9,h:0.42,fontFace:'Aptos Display',fontSize:22,bold:true,color:C.navy,margin:0});
+                    if (subtitle) slide.addText(subtitle, {x:0.57,y:0.86,w:10.5,h:0.25,fontSize:9,color:C.muted,margin:0});
+                }
+                function addPill(slide, text, x, y, w, fill=C.panel2, color=C.cyan) {
+                    slide.addShape(pptx.ShapeType.roundRect,{x,y,w,h:0.34,rectRadius:0.06,fill:{color:fill},line:{color:fill}});
+                    slide.addText(text,{x:x+0.08,y:y+0.07,w:w-0.16,h:0.18,fontSize:7.5,bold:true,color,align:'center',margin:0});
+                }
+                function addKPI(slide, x, label, value, accent, sub='') {
+                    slide.addShape(pptx.ShapeType.roundRect,{x,y:1.35,w:2.88,h:1.05,rectRadius:0.08,fill:{color:C.panel},line:{color:C.line,width:1}});
+                    slide.addShape(pptx.ShapeType.rect,{x,y:1.35,w:0.06,h:1.05,fill:{color:accent},line:{color:accent}});
+                    slide.addText(label,{x:x+0.2,y:1.53,w:2.4,h:0.18,fontSize:8,bold:true,color:C.muted,margin:0});
+                    slide.addText(value,{x:x+0.2,y:1.78,w:2.4,h:0.32,fontSize:18,bold:true,color:C.navy,margin:0});
+                    if(sub) slide.addText(sub,{x:x+0.2,y:2.15,w:2.4,h:0.15,fontSize:7,color:C.muted,margin:0});
+                }
+                function addSectionCard(slide, title, body, x, y, w, h, accent=C.cyan) {
+                    slide.addShape(pptx.ShapeType.roundRect,{x,y,w,h,rectRadius:0.06,fill:{color:C.panel},line:{color:C.line,width:1}});
+                    slide.addText(title,{x:x+0.2,y:y+0.16,w:w-0.4,h:0.25,fontSize:11,bold:true,color:accent,margin:0});
+                    slide.addText(body,{x:x+0.2,y:y+0.55,w:w-0.4,h:h-0.68,fontSize:9.2,color:C.black,breakLine:false,fit:'shrink',valign:'top',margin:0.02});
+                }
+                function addChartImage(slide, id, x, y, w, h) {
+                    const canvas = document.getElementById(id);
+                    if (!canvas || !canvas.toDataURL) return false;
+                    try {
+                        slide.addImage({data:canvas.toDataURL('image/png',1.0),x,y,w,h});
+                        return true;
+                    } catch(e) { return false; }
+                }
+                function sectionText(letter) {
+                    const re = new RegExp('(?:^|\\n)'+letter+'[.)]?[ \\t]+([\\s\\S]*?)(?=\\n[A-I][.)]?[ \\t]+|$)','i');
+                    const m = aiText.match(re);
+                    return m ? m[1].trim() : '';
+                }
+                function bulletsFrom(text, max=7) {
+                    return text.split(/\n+/).map(s=>s.replace(/^[\\s•*-]+/,'').trim()).filter(Boolean).slice(0,max);
+                }
+                function addBulletList(slide, items, x, y, w, h, fontSize=10) {
+                    const lines = items.length ? items.map(t=>({text:t,options:{bullet:{indent:11},breakLine:true}})) : [{text:'Belum tersedia.',options:{breakLine:true}}];
+                    slide.addText(lines,{x,y,w,h,fontSize,color:C.black,breakLine:false,fit:'shrink',valign:'top',margin:0.02,paraSpaceAfterPt:7});
+                }
+
+                // Slide 1 — Executive Cover
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    s.background = {color:'FFFFFF'};
+                    s.addShape(pptx.ShapeType.rect,{x:0.65,y:1.15,w:0.10,h:4.85,fill:{color:C.cyan},line:{color:C.cyan}});
+                    s.addText('AI STOCK INTELLIGENCE',{x:1.05,y:1.45,w:7.5,h:0.6,fontFace:'Aptos Display',fontSize:29,bold:true,color:C.navy,margin:0});
+                    s.addText('EXECUTIVE MANAGEMENT REVIEW',{x:1.08,y:2.12,w:7.3,h:0.35,fontSize:15,bold:true,color:C.cyan,margin:0});
+                    s.addText('Finished Goods • Supply Chain • Warehouse',{x:1.1,y:2.62,w:6.8,h:0.3,fontSize:11,color:C.muted,margin:0});
+                    s.addShape(pptx.ShapeType.roundRect,{x:0.78,y:3.35,w:4.5,h:1.15,rectRadius:0.08,fill:{color:C.panel},line:{color:C.line}});
+                    s.addText('CURRENT FG STOCK',{x:1.02,y:3.62,w:2.8,h:0.18,fontSize:8,bold:true,color:C.muted,margin:0});
+                    s.addText(snapTon,{x:1.02,y:3.88,w:3.7,h:0.38,fontSize:22,bold:true,color:C.navy,margin:0});
+                    s.addText(`Generated ${new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})}`,{x:0.8,y:5.65,w:5.8,h:0.25,fontSize:9,color:C.muted,margin:0});
+                    s.addText('Decision support deck — prepared from dashboard data and AI management analysis.',{x:0.8,y:6.1,w:7.6,h:0.35,fontSize:10,color:C.white,margin:0});
+                    addPill(s,'EXECUTIVE READY',9.55,1.5,2.35,'EAF5F1',C.green);
+                    addPill(s,'AI-ASSISTED ANALYSIS',9.55,1.98,2.35,'F0EEFB',C.purple);
+                }
+
+                // Slide 2 — Executive Snapshot
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'Executive Snapshot','KPI utama yang perlu dibawa ke Management Review');
+                    addKPI(s,0.55,'FG STOCK',snapTon,C.cyan,'Current balance');
+                    addKPI(s,3.72,'ACTIVE SKU',snapSku,C.purple,'Active SKU');
+                    addKPI(s,6.89,'IN — MTD',snapIn,C.green,'Inbound');
+                    addKPI(s,10.06,'OUT — MTD',snapOut,C.red,'Outbound');
+
+                    const exec = sectionText('A');
+                    addSectionCard(s,'Executive Summary',exec || 'Analisis AI belum tersedia. Jalankan Analyze terlebih dahulu.',0.55,2.72,12.23,2.15,C.cyan);
+
+                    const mgmt = sectionText('I');
+                    addSectionCard(s,'Management Takeaway',mgmt || 'Management takeaway belum tersedia.',0.55,5.05,12.23,1.55,C.purple);
+                }
+
+                // Slide 3 — Flow & Trend
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'Stock Flow & Trend','Pergerakan IN vs OUT dan daily net movement');
+                    addChartImage(s,'aiTrendChart',0.55,1.25,6.0,3.25);
+                    addChartImage(s,'aiNetMovementChart',6.78,1.25,6.0,3.25);
+                    addSectionCard(s,'Performance Analysis',sectionText('B') || 'Belum tersedia.',0.55,4.72,12.23,1.75,C.green);
+                }
+
+                // Slide 4 — Stock Concentration & Outflow
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'SKU Concentration & Outflow','Fokus pada inventory concentration dan SKU dengan tekanan outbound terbesar');
+                    addChartImage(s,'aiTopSkuChart',0.55,1.25,6.0,3.25);
+                    addChartImage(s,'aiOutflowChart',6.78,1.25,6.0,3.25);
+                    addSectionCard(s,'SKU Analysis',sectionText('D') || 'Belum tersedia.',0.55,4.72,12.23,1.75,C.amber);
+                }
+
+                // Slide 5 — Segment & Capacity
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'Segment Mix & Capacity','Komposisi stok dan implikasi terhadap kapasitas warehouse');
+                    addChartImage(s,'aiSegmentChart',0.55,1.3,5.25,3.55);
+                    addSectionCard(s,'Segment Analysis',sectionText('E') || 'Belum tersedia.',6.05,1.3,6.73,1.72,C.cyan);
+                    addSectionCard(s,'Stock Position & Capacity',sectionText('C') || 'Belum tersedia.',6.05,3.18,6.73,1.67,C.purple);
+                    addSectionCard(s,'Risk & Capacity Check',sectionText('F') || 'Belum tersedia.',0.55,5.08,12.23,1.32,C.red);
+                }
+
+                // Slide 6 — Risks & Root Cause
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'Risk & Root Cause','Prioritas risiko dan interpretasi pola inventory');
+                    addSectionCard(s,'Risk Alert',sectionText('F') || 'Belum tersedia.',0.55,1.25,6.0,4.95,C.red);
+                    addSectionCard(s,'Root Cause / Interpretation',sectionText('G') || 'Belum tersedia.',6.78,1.25,6.0,4.95,C.amber);
+                }
+
+                // Slide 7 — Action Plan & Management Decisions
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'Recommended Actions & Decisions','Rencana tindakan yang siap dibawa ke forum eksekutif');
+                    addSectionCard(s,'Recommended Action',sectionText('H') || 'Belum tersedia.',0.55,1.25,7.25,5.15,C.green);
+                    addSectionCard(s,'Management Takeaway',sectionText('I') || 'Belum tersedia.',8.05,1.25,4.73,5.15,C.purple);
+                }
+
+                // Slide 8 — Appendix: Dashboard Visuals
+                {
+                    const s = pptx.addSlide('EXEC_MASTER');
+                    addTitle(s,'Appendix — Dashboard Visuals','Reference charts generated directly from the AI Stock Intelligence Dashboard');
+                    addChartImage(s,'aiTrendChart',0.55,1.2,4.0,2.35);
+                    addChartImage(s,'aiTopSkuChart',4.68,1.2,4.0,2.35);
+                    addChartImage(s,'aiOutflowChart',8.81,1.2,3.97,2.35);
+                    addChartImage(s,'aiNetMovementChart',0.55,3.82,6.0,2.55);
+                    addChartImage(s,'aiSegmentChart',6.78,3.82,6.0,2.55);
+                }
+
+                const fileDate = new Date().toISOString().slice(0,10).replace(/-/g,'');
+                await pptx.writeFile({ fileName:`AI_Stock_Intelligence_Executive_Review_${fileDate}.pptx` });
+
+                setTimeout(() => showToast('PowerPoint Ready','Executive PowerPoint berhasil dibuat dan siap dipresentasikan.','success'), 500);
+            } catch (err) {
+                console.error('PPT Export Error:', err);
+                showToast('PowerPoint Error', String(err.message || err).slice(0,160), 'warning');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = original || '<i class="ph-bold ph-presentation-chart"></i> Download PPT';
+                }
+            }
+        }
+
         async function runAIStockAnalysis(event) {
             if (event) { event.preventDefault(); event.stopPropagation(); }
             const btn=document.getElementById('aiAnalyzeBtn');
@@ -3395,12 +4353,21 @@ ${JSON.stringify(payload)}`;
             }
         }
 
+        function toggleReportMenu() {
+            const menu = document.getElementById('reportSubmenu');
+            const caret = document.getElementById('reportMenuCaret');
+            if (!menu) return;
+            const willOpen = menu.classList.contains('hidden');
+            menu.classList.toggle('hidden', !willOpen);
+            if (caret) caret.style.transform = willOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
         function handleTabClick(tabName) {
             if (window.innerWidth < 1024) {
                 toggleSidebar();
             }
 
-            const privateTabs = ['exec-report', 'offtake', 'pallet', 'trans-detail', 'trans-summary']; 
+            const privateTabs = ['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary']; 
             if (privateTabs.includes(tabName)) { 
                 if (isAuthenticated) switchMainTab(tabName); 
                 else { pendingTargetTab = tabName; openAuthModal(); } 
@@ -3411,24 +4378,24 @@ ${JSON.stringify(payload)}`;
             activeMainTab = tabName;
             const kpiContainer = document.getElementById('kpiContainer'), actionControls = document.getElementById('generalActionControls');
             
-            if (['detail', 'summary-only', 'offtake', 'pallet', 'exec-report', 'trans-detail', 'trans-summary', 'stok-sig', 'ai-analyst'].includes(tabName)) { 
+            if (['detail', 'summary-only', 'offtake', 'pallet', 'exec-report', 'exec-report-detail', 'trans-detail', 'trans-summary', 'stok-sig', 'ai-analyst'].includes(tabName)) { 
                 if(kpiContainer) kpiContainer.classList.add('hidden'); 
             } else { 
                 if(kpiContainer) kpiContainer.classList.remove('hidden'); 
             }
             
-            if(['exec-report', 'trans-detail', 'trans-summary', 'stok-sig'].includes(tabName)) { 
+            if(['exec-report', 'exec-report-detail', 'trans-detail', 'trans-summary', 'stok-sig'].includes(tabName)) { 
                 if(actionControls) actionControls.classList.add('hidden'); 
             } else { 
                 if(actionControls) actionControls.classList.remove('hidden'); 
             }
             
-            const allTabs = ['stock', 'ai-analyst', 'detail', 'summary-only', 'exec-report', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'];
+            const allTabs = ['stock', 'ai-analyst', 'detail', 'summary-only', 'exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'];
             allTabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`), btn = document.getElementById(`nav-btn-${t}`);
                 if(t === tabName) {
                     if (view) view.classList.remove('hidden');
-                    if(btn) btn.className = (t === 'exec-report' || t === 'trans-summary') ? "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-statusSuccess/20 to-transparent text-statusSuccess font-semibold border border-statusSuccess/30 shadow-glow-green transition-all text-left" : "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-accentCyan/20 to-transparent text-accentCyan font-semibold border border-accentCyan/30 shadow-glow-cyan transition-all text-left";
+                    if(btn) btn.className = (t === 'exec-report' || t === 'exec-report-detail' || t === 'trans-summary') ? "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-statusSuccess/20 to-transparent text-statusSuccess font-semibold border border-statusSuccess/30 shadow-glow-green transition-all text-left" : "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-accentCyan/20 to-transparent text-accentCyan font-semibold border border-accentCyan/30 shadow-glow-cyan transition-all text-left";
                 } else {
                     if (view) view.classList.add('hidden'); 
                     if(btn) btn.className = "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group";
@@ -3437,6 +4404,11 @@ ${JSON.stringify(payload)}`;
 
             if(tabName === 'trans-detail') renderTransDetail();
             if(tabName === 'trans-summary') renderTransSummary();
+            if(tabName === 'exec-report') renderExecReportPreview();
+            if(tabName === 'exec-report-detail') {
+                renderExecReportDetail();
+                setTimeout(renderExecReportDetail, 50);
+            }
             if(tabName === 'stok-sig') {
                 renderStokSigMakloonTable();
                 renderStokSigDetailTable();
@@ -3459,7 +4431,8 @@ ${JSON.stringify(payload)}`;
             else if(tabName === 'ai-analyst') { pTitle.innerText = 'AI Stock Intelligence Dashboard'; pSub.innerText = 'Comprehensive MTD Finished Goods analysis, visual analytics & executive management insight'; icon.className = 'ph-fill ph-sparkle text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-pink-500/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'detail') { pTitle.innerText = 'Detail Master Data Stok'; pSub.innerText = 'Rincian Operasional & Master Item'; icon.className = 'ph-fill ph-database text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-accentCyan/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'summary-only') { pTitle.innerText = 'Ringkasan Stok Overview'; pSub.innerText = 'Tabel Ringkasan Stok Finished Goods'; icon.className = 'ph-fill ph-table text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-accentCyan/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
-            else if(tabName === 'exec-report') { pTitle.innerText = 'Format Laporan Eksekutif'; pSub.innerText = 'Unduhan Tabel Pivot Profesional (Siap Cetak)'; icon.className = 'ph-fill ph-file-pdf text-2xl md:text-3xl text-statusSuccess'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-statusSuccess/20 to-emerald-600/10 border border-statusSuccess/30 rounded-xl md:rounded-2xl shadow-glow-green'; }
+            else if(tabName === 'exec-report') { pTitle.innerText = 'Report — Summary'; pSub.innerText = 'Ringkasan laporan eksekutif berdasarkan tanggal dan data transaksi'; icon.className = 'ph-fill ph-table text-2xl md:text-3xl text-statusSuccess'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-statusSuccess/20 to-emerald-600/10 border border-statusSuccess/30 rounded-xl md:rounded-2xl shadow-glow-green'; }
+            else if(tabName === 'exec-report-detail') { pTitle.innerText = 'Report — Detail'; pSub.innerText = 'Opening Balance, IN dan OUT per SKU berdasarkan sheet DATA'; icon.className = 'ph-fill ph-list-dashes text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-accentCyan/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'trans-detail') { pTitle.innerText = 'Detail Transaksi (DATA)'; pSub.innerText = 'Tampilan data persis sesuai sheet DATA dengan filter tanggal'; icon.className = 'ph-fill ph-list-dashes text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentCyan/20 to-blue-500/10 border border-accentCyan/30 rounded-xl md:rounded-2xl shadow-glow-cyan'; }
             else if(tabName === 'trans-summary') { pTitle.innerText = 'Summary Transaksi (DATA)'; pSub.innerText = 'Agregasi terurut dari Tanggal Posting, SKU, Jenis Transaksi'; icon.className = 'ph-fill ph-sigma text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-pink-500/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'stok-sig') { pTitle.innerText = 'Stok SIG'; pSub.innerText = 'Data Makloon & Analisis Rilis MD'; icon.className = 'ph-fill ph-buildings text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentCyan/20 to-blue-500/10 border border-accentCyan/30 rounded-xl md:rounded-2xl shadow-glow-cyan'; }
@@ -3493,7 +4466,7 @@ ${JSON.stringify(payload)}`;
             isAuthenticated = false; 
             updateAuthUI(); 
             showToast('Sesi Terkunci', 'Anda telah kembali ke mode Publik.', 'info'); 
-            if (['exec-report', 'offtake', 'pallet', 'trans-detail', 'trans-summary'].includes(activeMainTab)) switchMainTab('stock'); 
+            if (['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary'].includes(activeMainTab)) switchMainTab('stock'); 
         }
         
         function updateAuthUI() { 

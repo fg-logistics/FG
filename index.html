@@ -2747,22 +2747,144 @@
         }
 
         function renderSummaryTable(filterQuery = '', segmentFilter = 'ALL') {
-            const tbody = document.getElementById('summaryTableBody'), tbodyOnly = document.getElementById('summaryTableBodyOnly'), grouped = {};
+            const tbody = document.getElementById('summaryTableBody');
+            const tbodyOnly = document.getElementById('summaryTableBodyOnly');
+            const grouped = {};
+
             summaryData.forEach(item => {
                 if (segmentFilter !== 'ALL' && item.segment !== segmentFilter) return;
-                if (filterQuery) { const q = filterQuery.toLowerCase(); if (!(item.segment.toLowerCase().includes(q) || item.sku.toLowerCase().includes(q))) return; }
-                if (!grouped[item.segment]) grouped[item.segment] = []; grouped[item.segment].push(item);
+
+                if (filterQuery) {
+                    const q = filterQuery.toLowerCase();
+                    if (!(String(item.segment).toLowerCase().includes(q) ||
+                          String(item.sku).toLowerCase().includes(q))) return;
+                }
+
+                if (!grouped[item.segment]) grouped[item.segment] = [];
+                grouped[item.segment].push(item);
             });
-            const customOrder = ['RETAIL', 'PROJECT', 'GENERAL'], segments = Object.keys(grouped).sort((a, b) => { let idxA = customOrder.indexOf(a.toUpperCase()), idxB = customOrder.indexOf(b.toUpperCase()); if (idxA === -1) idxA = 999; if (idxB === -1) idxB = 999; return (idxA !== idxB) ? idxA - idxB : a.localeCompare(b); });
-            if (segments.length === 0) { const emptyRow = `<tr><td colspan="5" class="px-3 md:px-6 py-6 md:py-12 text-center text-textSecondary italic text-[10px] md:text-xs">Tidak ada data stok yang sesuai dengan filter.</td></tr>`; if (tbody) tbody.innerHTML = emptyRow; if (tbodyOnly) tbodyOnly.innerHTML = emptyRow; return; }
+
+            const customOrder = ['RETAIL', 'PROJECT', 'GENERAL'];
+            const segments = Object.keys(grouped).sort((a, b) => {
+                let idxA = customOrder.indexOf(String(a).toUpperCase());
+                let idxB = customOrder.indexOf(String(b).toUpperCase());
+                if (idxA === -1) idxA = 999;
+                if (idxB === -1) idxB = 999;
+                return (idxA !== idxB) ? idxA - idxB : String(a).localeCompare(String(b));
+            });
+
+            if (segments.length === 0) {
+                const emptyRow = `<tr>
+                    <td colspan="5" class="px-3 md:px-6 py-6 md:py-12 text-center text-textSecondary italic text-[10px] md:text-xs">
+                        Tidak ada data stok yang sesuai dengan filter.
+                    </td>
+                </tr>`;
+                if (tbody) tbody.innerHTML = emptyRow;
+                if (tbodyOnly) tbodyOnly.innerHTML = emptyRow;
+                return;
+            }
+
             let fullHtml = '';
+            let grandZak = 0;
+            let grandTon = 0;
+
             segments.forEach(seg => {
-                const items = grouped[seg], sumTon = items.reduce((a, b) => a + b.qtyTon, 0);
-                let accentColor = seg === 'PROJECT' ? 'text-accentPurple' : seg === 'GENERAL' ? 'text-statusSuccess' : 'text-accentCyan', borderTint = seg === 'PROJECT' ? 'border-l-accentPurple' : seg === 'GENERAL' ? 'border-l-statusSuccess' : 'border-l-accentCyan', bgTint = seg === 'PROJECT' ? 'bg-accentPurple/5' : seg === 'GENERAL' ? 'bg-statusSuccess/5' : 'bg-accentCyan/5';
-                fullHtml += `<tr class="cursor-pointer ${bgTint} border-l-4 ${borderTint} border-b border-borderMain transition-all hover:bg-white/5" onclick="toggleGroupRow('${seg}')"><td colspan="5" class="px-3 md:px-6 py-2.5 md:py-3"><div class="flex items-center justify-between"><div class="flex items-center gap-2 md:gap-3"><i class="ph-bold ph-caret-down text-textSecondary transition-transform duration-300 text-[10px] md:text-xs" id="icon-group-${seg}"></i><span class="font-bold text-white uppercase tracking-wider flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs"><i class="ph-fill ph-folder-open ${accentColor} text-sm md:text-base"></i> Segment: ${seg}</span></div><div class="text-[10px] md:text-xs font-mono font-bold text-white">Subtotal: <span class="${accentColor}">${fmtDec(sumTon)} TON</span></div></div></td></tr>`;
-                items.forEach(item => { fullHtml += `<tr class="row-group-${seg} table-row-hover border-b border-borderMain/40 text-textSecondary transition-colors"><td class="px-3 md:px-6 py-2.5 md:py-3 pl-8 md:pl-12 font-medium text-[10px] md:text-xs text-textSecondary">${item.segment}</td><td class="px-3 md:px-6 py-2.5 md:py-3 font-bold text-white font-mono text-[10px] md:text-xs">${item.sku}</td><td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs">${fmtNum(item.weight)}</td><td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs">${fmtNum(item.qtyZak)}</td><td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs font-bold text-accentCyan">${fmtDec(item.qtyTon)}</td></tr>`; });
+                const items = grouped[seg];
+                const sumZak = items.reduce((a, b) => a + (Number(b.qtyZak) || 0), 0);
+                const sumTon = items.reduce((a, b) => a + (Number(b.qtyTon) || 0), 0);
+
+                grandZak += sumZak;
+                grandTon += sumTon;
+
+                const isProject = String(seg).toUpperCase() === 'PROJECT';
+                const isGeneral = String(seg).toUpperCase() === 'GENERAL';
+
+                const accentColor = isProject
+                    ? 'text-accentPurple'
+                    : isGeneral
+                        ? 'text-statusSuccess'
+                        : 'text-accentCyan';
+
+                const borderTint = isProject
+                    ? 'border-l-accentPurple'
+                    : isGeneral
+                        ? 'border-l-statusSuccess'
+                        : 'border-l-accentCyan';
+
+                const bgTint = isProject
+                    ? 'bg-accentPurple/5'
+                    : isGeneral
+                        ? 'bg-statusSuccess/5'
+                        : 'bg-accentCyan/5';
+
+                // Segment header.
+                fullHtml += `
+                    <tr class="cursor-pointer ${bgTint} border-l-4 ${borderTint} border-b border-borderMain transition-all hover:bg-white/5"
+                        onclick="toggleGroupRow('${seg}')">
+                        <td colspan="5" class="px-3 md:px-6 py-2.5 md:py-3">
+                            <div class="flex items-center gap-2 md:gap-3">
+                                <i class="ph-bold ph-caret-down text-textSecondary transition-transform duration-300 text-[10px] md:text-xs"
+                                   id="icon-group-${seg}"></i>
+                                <span class="font-bold text-white uppercase tracking-wider flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs">
+                                    <i class="ph-fill ph-folder-open ${accentColor} text-sm md:text-base"></i>
+                                    Segment: ${seg}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>`;
+
+                // Detail rows.
+                items.forEach(item => {
+                    fullHtml += `
+                        <tr class="row-group-${seg} table-row-hover border-b border-borderMain/40 text-textSecondary transition-colors">
+                            <td class="px-3 md:px-6 py-2.5 md:py-3 pl-8 md:pl-12 font-medium text-[10px] md:text-xs text-textSecondary">${item.segment}</td>
+                            <td class="px-3 md:px-6 py-2.5 md:py-3 font-bold text-white font-mono text-[10px] md:text-xs">${item.sku}</td>
+                            <td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs">${fmtNum(item.weight)}</td>
+                            <td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs">${fmtNum(item.qtyZak)}</td>
+                            <td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs font-bold text-accentCyan">${fmtDec(item.qtyTon)}</td>
+                        </tr>`;
+                });
+
+                // SUBTOTAL PER SEGMENT.
+                fullHtml += `
+                    <tr class="row-group-${seg} border-b-2 border-borderMain bg-white/[0.035]">
+                        <td colspan="2" class="px-3 md:px-6 py-2.5 md:py-3 pl-8 md:pl-12">
+                            <span class="font-bold ${accentColor} uppercase tracking-wider text-[9px] md:text-[11px]">
+                                Subtotal ${seg}
+                            </span>
+                        </td>
+                        <td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono text-[10px] md:text-xs text-textSecondary">—</td>
+                        <td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono font-bold text-white text-[10px] md:text-xs">
+                            ${fmtNum(sumZak)}
+                        </td>
+                        <td class="px-3 md:px-6 py-2.5 md:py-3 text-right font-mono font-black ${accentColor} text-[10px] md:text-xs">
+                            ${fmtDec(sumTon)} TON
+                        </td>
+                    </tr>`;
             });
-            if (tbody) tbody.innerHTML = fullHtml; if (tbodyOnly) tbodyOnly.innerHTML = fullHtml;
+
+            // GRAND TOTAL seluruh segment yang tampil setelah filter.
+            fullHtml += `
+                <tr class="border-t-2 border-accentCyan/40 bg-accentCyan/10">
+                    <td colspan="2" class="px-3 md:px-6 py-3 md:py-4">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-fill ph-sigma text-accentCyan text-base md:text-lg"></i>
+                            <span class="font-black text-white uppercase tracking-wider text-[10px] md:text-xs">
+                                Grand Total
+                            </span>
+                        </div>
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4 text-right font-mono font-bold text-textSecondary text-[10px] md:text-xs">—</td>
+                    <td class="px-3 md:px-6 py-3 md:py-4 text-right font-mono font-black text-white text-[10px] md:text-xs">
+                        ${fmtNum(grandZak)}
+                    </td>
+                    <td class="px-3 md:px-6 py-3 md:py-4 text-right font-mono font-black text-accentCyan text-[10px] md:text-xs">
+                        ${fmtDec(grandTon)} TON
+                    </td>
+                </tr>`;
+
+            if (tbody) tbody.innerHTML = fullHtml;
+            if (tbodyOnly) tbodyOnly.innerHTML = fullHtml;
         }
 
         function renderExecReportPreview() {

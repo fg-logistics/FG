@@ -458,7 +458,7 @@
                         <option value="GENERAL">Segment: GENERAL</option>
                     </select>
 
-                    <button onclick="exportData()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-accentCyan to-blue-500 hover:from-blue-400 hover:to-accentCyan text-bgPrimary font-bold px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-glow-cyan transition-all flex items-center gap-2 text-[10px] md:text-xs transform hover:scale-105 active:scale-95 mt-2 sm:mt-0">
+                    <button onclick="exportData()" title="Stok Overview: download tanpa login; menu lain wajib login" class="w-full sm:w-auto justify-center bg-gradient-to-r from-accentCyan to-blue-500 hover:from-blue-400 hover:to-accentCyan text-bgPrimary font-bold px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-glow-cyan transition-all flex items-center gap-2 text-[10px] md:text-xs transform hover:scale-105 active:scale-95 mt-2 sm:mt-0">
                         <i class="ph-bold ph-microsoft-excel-logo text-sm md:text-base"></i>
                         Export Excel
                     </button>
@@ -729,7 +729,7 @@
                             <div class="flex gap-2 w-full xl:w-auto">
                                 <button onclick="openGeminiSettings()" class="flex-1 xl:flex-none justify-center px-3 py-2 bg-bgPrimary border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2"><i class="ph-bold ph-gear"></i> Worker Settings</button>
                                 <button type="button" onclick="runAIStockAnalysis(event)" id="aiAnalyzeBtn" class="flex-1 xl:flex-none justify-center px-5 py-2 bg-gradient-to-r from-accentPurple to-pink-500 text-white font-bold rounded-xl shadow-glow-purple text-[10px] flex items-center gap-2"><i class="ph-bold ph-sparkle"></i> Analyze</button>
-                                <button type="button" onclick="exportAIExecutivePPT(event)" id="aiPptBtn" class="flex-1 xl:flex-none justify-center px-4 py-2 bg-gradient-to-r from-[#173B66] to-[#0E7490] text-white font-bold rounded-xl shadow-lg text-[10px] flex items-center gap-2 border border-accentCyan/30"><i class="ph-bold ph-presentation-chart"></i> Download PPT</button>
+                                <button type="button" onclick="exportAIExecutivePPT(event)" id="aiPptBtn" title="Login diperlukan untuk mengunduh PowerPoint" class="flex-1 xl:flex-none justify-center px-4 py-2 bg-gradient-to-r from-[#173B66] to-[#0E7490] text-white font-bold rounded-xl shadow-lg text-[10px] flex items-center gap-2 border border-accentCyan/30"><i class="ph-bold ph-presentation-chart"></i> Download PPT</button>
                             </div>
                         </div>
 
@@ -1279,6 +1279,7 @@
         let chartAnimInterval = null;
         let isAuthenticated = false;
         let pendingTargetTab = null;
+        let pendingDownloadAction = null;
 
         const SEC_U = 'YWRtaW4='; 
         const SEC_P = 'bWl0cmErMDA=';
@@ -4091,6 +4092,8 @@
         async function exportAIExecutivePPT(event) {
             if (event) { event.preventDefault(); event.stopPropagation(); }
 
+            if (!requireDownloadAuth(() => exportAIExecutivePPT(), 'mengunduh PowerPoint AI Stock Intelligence')) return;
+
             const btn = document.getElementById('aiPptBtn');
 
             const ensurePptxGenLoaded = () => new Promise((resolve, reject) => {
@@ -4509,10 +4512,16 @@ ${JSON.stringify(payload)}`;
             if (document.getElementById('authUsername').value.trim() === atob(SEC_U) && document.getElementById('authPassword').value.trim() === atob(SEC_P)) {
                 isAuthenticated = true; updateAuthUI(); closeAuthModal(); showToast('Akses Diberikan', 'Sesi privat berhasil diverifikasi.', 'success');
                 if (pendingTargetTab) switchMainTab(pendingTargetTab);
+                if (pendingDownloadAction) {
+                    const action = pendingDownloadAction;
+                    pendingDownloadAction = null;
+                    setTimeout(() => action(), 150);
+                }
             } else { document.getElementById('authErrorMsg').classList.remove('hidden'); document.getElementById('authErrorText').innerText = 'Username atau Password salah!'; }
         }
         function logoutSession() { 
             isAuthenticated = false; 
+            pendingDownloadAction = null;
             updateAuthUI(); 
             showToast('Sesi Terkunci', 'Anda telah kembali ke mode Publik.', 'info'); 
             if (['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'].includes(activeMainTab)) switchMainTab('stock'); 
@@ -4656,7 +4665,22 @@ ${JSON.stringify(payload)}`;
             setTimeout(() => showToast('Export Success', 'Executive format downloaded.', 'success'), 500);
         }
 
+        function requireDownloadAuth(action, label = 'Download') {
+            if (isAuthenticated) return true;
+            pendingDownloadAction = action;
+            showToast('Login Required', `Silakan login terlebih dahulu untuk ${label}.`, 'warning');
+            openAuthModal();
+            return false;
+        }
+
         function exportData() {
+            // Stock Overview is the only stock menu whose download is public.
+            // All other export/download actions remain protected by their own guards.
+            // ONLY the main "Stok Overview" menu is public.
+            // "Stock Summary Overview", "Master Stock Details", and other exports remain private.
+            if (activeMainTab !== 'stock') {
+                if (!requireDownloadAuth(() => exportData(), 'mengunduh file Excel')) return;
+            }
             showToast('Exporting...', 'Preparing standard Excel report (Template Style)...', 'info');
             const wb = XLSX.utils.book_new(), now = new Date(), ws = {};
             const printDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth()+1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} WIB`;

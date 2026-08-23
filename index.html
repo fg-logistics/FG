@@ -458,7 +458,7 @@
                         <option value="GENERAL">Segment: GENERAL</option>
                     </select>
 
-                    <button onclick="exportData()" title="Stok Overview: download tanpa login; menu lain wajib login" class="w-full sm:w-auto justify-center bg-gradient-to-r from-accentCyan to-blue-500 hover:from-blue-400 hover:to-accentCyan text-bgPrimary font-bold px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-glow-cyan transition-all flex items-center gap-2 text-[10px] md:text-xs transform hover:scale-105 active:scale-95 mt-2 sm:mt-0">
+                    <button onclick="exportData()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-accentCyan to-blue-500 hover:from-blue-400 hover:to-accentCyan text-bgPrimary font-bold px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-glow-cyan transition-all flex items-center gap-2 text-[10px] md:text-xs transform hover:scale-105 active:scale-95 mt-2 sm:mt-0">
                         <i class="ph-bold ph-microsoft-excel-logo text-sm md:text-base"></i>
                         Export Excel
                     </button>
@@ -729,7 +729,7 @@
                             <div class="flex gap-2 w-full xl:w-auto">
                                 <button onclick="openGeminiSettings()" class="flex-1 xl:flex-none justify-center px-3 py-2 bg-bgPrimary border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2"><i class="ph-bold ph-gear"></i> Worker Settings</button>
                                 <button type="button" onclick="runAIStockAnalysis(event)" id="aiAnalyzeBtn" class="flex-1 xl:flex-none justify-center px-5 py-2 bg-gradient-to-r from-accentPurple to-pink-500 text-white font-bold rounded-xl shadow-glow-purple text-[10px] flex items-center gap-2"><i class="ph-bold ph-sparkle"></i> Analyze</button>
-                                <button type="button" onclick="exportAIExecutivePPT(event)" id="aiPptBtn" title="Login diperlukan untuk mengunduh PowerPoint" class="flex-1 xl:flex-none justify-center px-4 py-2 bg-gradient-to-r from-[#173B66] to-[#0E7490] text-white font-bold rounded-xl shadow-lg text-[10px] flex items-center gap-2 border border-accentCyan/30"><i class="ph-bold ph-presentation-chart"></i> Download PPT</button>
+                                <button type="button" onclick="exportAIExecutivePPT(event)" id="aiPptBtn" class="flex-1 xl:flex-none justify-center px-4 py-2 bg-gradient-to-r from-[#173B66] to-[#0E7490] text-white font-bold rounded-xl shadow-lg text-[10px] flex items-center gap-2 border border-accentCyan/30"><i class="ph-bold ph-presentation-chart"></i> Download PPT</button>
                             </div>
                         </div>
 
@@ -1279,7 +1279,6 @@
         let chartAnimInterval = null;
         let isAuthenticated = false;
         let pendingTargetTab = null;
-        let pendingDownloadAction = null;
 
         const SEC_U = 'YWRtaW4='; 
         const SEC_P = 'bWl0cmErMDA=';
@@ -1372,46 +1371,134 @@
             setTimeout(() => { toast.classList.remove('show'); }, 3500);
         }
 
-        function fetchData(manual = false) {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-            document.getElementById('loadingOverlay').style.opacity = '1';
-            let masterParsed = false, updateParsed = false, makloonParsed = false, rilisParsed = false;
-            
-            const parseCSV = (url, callbackError, callbackSuccess) => {
-                Papa.parse(url, { download: true, header: false, skipEmptyLines: true, complete: (results) => callbackSuccess(results.data), error: (err) => callbackError(err) });
+        async function fetchData(manual = false) {
+            const overlay = document.getElementById('loadingOverlay');
+            const statusEl = overlay ? overlay.querySelector('.text-sm, .text-xs') : null;
+
+            if (overlay) {
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+            }
+
+            const setLoadingStatus = msg => {
+                if (statusEl) statusEl.textContent = msg;
+                const loadingText = document.getElementById('loadingText');
+                if (loadingText) loadingText.textContent = msg;
             };
-            
-            parseCSV(URL_MASTER_GVIZ, () => {
-                parseCSV(URL_MASTER_EXPORT, () => { masterParsed = true; checkComplete(); }, (rows) => { processMasterRows(rows); masterParsed = true; checkComplete(); });
-            }, (rows) => { processMasterRows(rows); masterParsed = true; checkComplete(); });
-            
-            parseCSV(URL_UPDATE_GVIZ, () => {
-                parseCSV(URL_UPDATE_EXPORT, () => { processUpdateRows(null); updateParsed = true; checkComplete(); }, (rows) => { processUpdateRows(rows); updateParsed = true; checkComplete(); });
-            }, (rows) => { processUpdateRows(rows); updateParsed = true; checkComplete(); });
 
-            parseCSV(URL_MAKLOON_EXPORT, () => { makloonParsed = true; checkComplete(); }, (rows) => { processStokSigMakloonRows(rows); makloonParsed = true; checkComplete(); });
-            parseCSV(URL_RILIS_EXPORT, () => { rilisParsed = true; checkComplete(); }, (rows) => { processStokSigDetailRows(rows); rilisParsed = true; checkComplete(); });
+            const parseCSVAsync = (url) => new Promise((resolve, reject) => {
+                Papa.parse(url, {
+                    download: true,
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: results => resolve(results.data),
+                    error: err => reject(err)
+                });
+            });
 
-            
-            function checkComplete() {
-                if(masterParsed && updateParsed && makloonParsed && rilisParsed) {
-                    generateExecReportData(); 
-                    renderSummaryTable(); 
+            const loadWithFallback = async (primaryUrl, fallbackUrl = null) => {
+                try {
+                    const rows = await parseCSVAsync(primaryUrl);
+                    if (rows && rows.length >= 2) return rows;
+                    throw new Error('Empty primary response');
+                } catch (primaryError) {
+                    if (!fallbackUrl) throw primaryError;
+                    return await parseCSVAsync(fallbackUrl);
+                }
+            };
+
+            const renderAll = () => {
+                try {
+                    generateExecReportData();
+                    renderSummaryTable();
                     renderExecReportPreview();
                     renderExecReportDetail();
-                    updateKPIs(); 
-                    renderCharts(); 
+                    updateKPIs();
+                    renderCharts();
                     updateLastUpdateUI();
-                    
-                    renderTransDetail();
-                    renderTransSummary();
-                    
-                    renderStokSigMakloonTable();
-                    renderStokSigDetailTable();
-                    renderStokDepletionChart();
 
-                    setTimeout(() => { const overlay = document.getElementById('loadingOverlay'); overlay.style.opacity = '0'; setTimeout(() => overlay.style.display = 'none', 500); }, 400);
-                    if(manual) showToast('Sync Complete', 'Data berhasil diperbarui dari Google Sheets.');
+                    try { renderTransDetail(); } catch(e) { console.error('renderTransDetail:', e); }
+                    try { renderTransSummary(); } catch(e) { console.error('renderTransSummary:', e); }
+
+                    try { renderStokSigMakloonTable(); } catch(e) { console.error('renderStokSigMakloonTable:', e); }
+                    try { renderStokSigDetailTable(); } catch(e) { console.error('renderStokSigDetailTable:', e); }
+                    try { renderStokDepletionChart(); } catch(e) { console.error('renderStokDepletionChart:', e); }
+                } catch (err) {
+                    console.error('Dashboard render error:', err);
+                    const msg = err && err.message ? err.message : String(err);
+                    showToast('Render Warning', `Komponen gagal dirender: ${msg}`, 'warning');
+                }
+            };
+
+            try {
+                // IMPORTANT: Master must finish first because Stock Overview/KPI
+                // are built from summaryData produced by processMasterRows().
+                setLoadingStatus('Mengambil data Master Stock...');
+                const masterRows = await loadWithFallback(URL_MASTER_GVIZ, URL_MASTER_EXPORT);
+
+                if (!masterRows || masterRows.length < 2) {
+                    throw new Error('MASTERDATA kosong');
+                }
+
+                processMasterRows(masterRows);
+
+                if (!summaryData || summaryData.length === 0) {
+                    throw new Error('MASTERDATA terbaca tetapi summaryData kosong');
+                }
+
+                // Render Stock Overview/KPI immediately after Master is valid.
+                // This prevents a slow transaction sheet from making Stock Overview
+                // appear as zero.
+                setLoadingStatus('Menampilkan Stock Overview & KPI...');
+                updateKPIs();
+                renderCharts();
+
+                // Other sources can now load in parallel.
+                setLoadingStatus('Mengambil data transaksi & supporting...');
+                await Promise.all([
+                    loadWithFallback(URL_UPDATE_GVIZ, URL_UPDATE_EXPORT)
+                        .then(rows => processUpdateRows(rows))
+                        .catch(err => {
+                            console.error('UPDATE load failed:', err);
+                            showToast('Data Warning', 'Data transaksi gagal dimuat; Stock Overview tetap menggunakan Master Stock.', 'warning');
+                        }),
+
+                    parseCSVAsync(URL_MAKLOON_EXPORT)
+                        .then(rows => processStokSigMakloonRows(rows))
+                        .catch(err => console.error('MAKLOON load failed:', err)),
+
+                    parseCSVAsync(URL_RILIS_EXPORT)
+                        .then(rows => processStokSigDetailRows(rows))
+                        .catch(err => console.error('RILIS MD load failed:', err))
+                ]);
+
+                // Re-render once transaction/support data is available.
+                setLoadingStatus('Menyelesaikan dashboard...');
+                renderAll();
+
+                if (manual) {
+                    showToast('Sync Complete', 'Data berhasil diperbarui dari Google Sheets.', 'success');
+                }
+            } catch (err) {
+                console.error('Google Sheets sync error:', err);
+
+                // Never replace a valid existing dashboard with zeros.
+                if (!summaryData || summaryData.length === 0) {
+                    summaryData = Array.isArray(FALLBACK_SUMMARY_DATA) ? FALLBACK_SUMMARY_DATA : [];
+                }
+
+                if (summaryData.length) {
+                    updateKPIs();
+                    renderCharts();
+                }
+
+                showToast('Sync Error', 'Master Stock gagal dimuat. Data sebelumnya dipertahankan.', 'error');
+            } finally {
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 250);
                 }
             }
         }
@@ -1755,13 +1842,19 @@
                 groupedAggregator[key].qtyZak += qtyZak;
                 if (groupedAggregator[key].weight === 0 && weight > 0) groupedAggregator[key].weight = weight;
             }
+            const previousSummaryData = Array.isArray(summaryData) ? summaryData.slice() : [];
             summaryData = [];
             for (let key in groupedAggregator) {
                 let item = groupedAggregator[key];
                 item.qtyTon = (item.qtyZak * item.weight) / 1000;
                 summaryData.push(item);
             }
-            if(summaryData.length === 0) summaryData = FALLBACK_SUMMARY_DATA;
+
+            // Never overwrite a valid dashboard dataset with an empty result
+            // caused by a transient Google Sheets response.
+            if (summaryData.length === 0) {
+                summaryData = previousSummaryData.length ? previousSummaryData : FALLBACK_SUMMARY_DATA;
+            }
         }
 
 
@@ -2535,26 +2628,30 @@
                     const recDateIso = rec.dateObj.toISOString().split('T')[0];
                     const recMonth = rec.dateObj.getMonth();
                     const recYear = rec.dateObj.getFullYear();
-                    
-                    const typeUpper = rec.type.toUpperCase();
-                    const isIn = typeUpper.includes('IN') || typeUpper.includes('MASUK') || typeUpper.includes('PRODUCTION') || typeUpper.includes('PRODUKSI');
-                    const isOut = typeUpper.includes('OUT') || typeUpper.includes('KELUAR') || typeUpper.includes('OFFTAKE') || typeUpper.includes('DELIVERY') || typeUpper.includes('KIRIM');
+
+                    const typeUpper = String(rec.type || '').toUpperCase();
+                    const isIn = typeUpper.includes('IN') ||
+                                 typeUpper.includes('MASUK') ||
+                                 typeUpper.includes('PRODUCTION') ||
+                                 typeUpper.includes('PRODUKSI');
+                    const isOut = typeUpper.includes('OUT') ||
+                                  typeUpper.includes('KELUAR') ||
+                                  typeUpper.includes('OFFTAKE') ||
+                                  typeUpper.includes('DELIVERY') ||
+                                  typeUpper.includes('KIRIM');
+
+                    const qtyZak = Math.abs(Number(rec.zak) || 0);
 
                     if (recDateIso === todayStrIso) {
-                        if (isIn) {
-                            todayZakDelta += rec.zak;
-                        } else if (isOut) {
-                            todayZakDelta -= rec.zak;
-                        }
+                        if (isIn) todayZakDelta += qtyZak;
+                        else if (isOut) todayZakDelta -= qtyZak;
                     }
-                    
-                    if (recMonth === currentMonth && recYear === currentYear) {
-                        validDaysInMonth.add(recDateIso);
-                        if (isIn) {
-                            monthInZak += rec.zak;
-                        } else if (isOut) {
-                            monthOutZak += rec.zak;
-                        }
+
+                    if (recYear === currentYear && recMonth === currentMonth) {
+                        if (isIn) monthInZak += qtyZak;
+                        else if (isOut) monthOutZak += qtyZak;
+
+                        validDaysInMonth.add(rec.dateObj.getDate());
                     }
                 }
             });
@@ -3138,59 +3235,81 @@
             const todayDate = todayObj.getDate();
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-            let totalZakSummary = 0;
-            summaryData.forEach(item => totalZakSummary += item.qtyZak);
-            let todayZakDelta = 0;
+            // Trend is calculated and displayed entirely in TON.
+            let totalTonSummary = 0;
+            summaryData.forEach(item => totalTonSummary += Number(item.qtyTon) || 0);
+            let todayTonDelta = 0;
 
-            let dailyIn = new Array(daysInMonth + 1).fill(0);
-            let dailyOut = new Array(daysInMonth + 1).fill(0);
+            let dailyInTon = new Array(daysInMonth + 1).fill(0);
+            let dailyOutTon = new Array(daysInMonth + 1).fill(0); // OUT is negative
             let dailySkuMovements = new Array(daysInMonth + 1).fill(null).map(() => ({})); 
-            let totalMonthIn = 0;
-            let totalMonthOut = 0;
+            let totalMonthInTon = 0;
+            let totalMonthOutTon = 0;
 
             transactionRecords.forEach(rec => {
-                if (!isNaN(rec.dateObj)) {
-                    const recYear = rec.dateObj.getFullYear();
-                    const recMonth = rec.dateObj.getMonth();
-                    const recDate = rec.dateObj.getDate();
-                    const recDateIso = rec.dateObj.toISOString().split('T')[0];
-                    const todayStrIso = todayObj.toISOString().split('T')[0];
+                // IMPORTANT: Trend must use the SAME source/date/tonnage logic as
+                // Transaction Summary. Date = Transaction Detail column Date
+                // (originalRow[0]); TON = Qty ZAK × SKU Weight / 1000.
+                const detailDateObj = getTransactionDetailDateObj(rec);
+                if (isNaN(detailDateObj.getTime())) return;
 
-                    const typeUpper = rec.type.toUpperCase();
-                    const isIn = typeUpper.includes('IN') || typeUpper.includes('MASUK') || typeUpper.includes('PRODUCTION') || typeUpper.includes('PRODUKSI');
-                    const isOut = typeUpper.includes('OUT') || typeUpper.includes('KELUAR') || typeUpper.includes('OFFTAKE') || typeUpper.includes('DELIVERY') || typeUpper.includes('KIRIM');
+                const recYear = detailDateObj.getFullYear();
+                const recMonth = detailDateObj.getMonth();
+                const recDate = detailDateObj.getDate();
 
-                    if (recDateIso === todayStrIso) {
-                        if (isIn) todayZakDelta += rec.zak;
-                        else if (isOut) todayZakDelta -= rec.zak;
+                const typeUpper = String(rec.type || '').toUpperCase();
+                const isIn = typeUpper.includes('IN') ||
+                             typeUpper.includes('MASUK') ||
+                             typeUpper.includes('PRODUCTION') ||
+                             typeUpper.includes('PRODUKSI');
+                const isOut = typeUpper.includes('OUT') ||
+                              typeUpper.includes('KELUAR') ||
+                              typeUpper.includes('OFFTAKE') ||
+                              typeUpper.includes('DELIVERY') ||
+                              typeUpper.includes('KIRIM');
+
+                // Use exactly the same TON formula as Transaction Summary.
+                const qtyZak = Number(rec.zak) || 0;
+                const weightKg = getTransactionWeightKg(rec.projectDelivery);
+                const recTon = (Math.abs(qtyZak) * weightKg) / 1000;
+
+                if (recYear === currentYear && recMonth === currentMonth) {
+                    const skuName =
+                        rec.projectDelivery && rec.projectDelivery !== '-'
+                            ? rec.projectDelivery
+                            : (rec.produk && rec.produk !== '-' ? rec.produk : 'UNKNOWN SKU');
+
+                    if (!dailySkuMovements[recDate][skuName]) {
+                        dailySkuMovements[recDate][skuName] = { in: 0, out: 0 };
                     }
 
-                    if (recYear === currentYear && recMonth === currentMonth) {
-                        const skuName = rec.produk && rec.produk !== '-' ? rec.produk : 'UNKNOWN SKU';
-                        if(!dailySkuMovements[recDate][skuName]) {
-                            dailySkuMovements[recDate][skuName] = { in: 0, out: 0 };
-                        }
-
-                        if (isIn) {
-                            dailyIn[recDate] += rec.zak;
-                            totalMonthIn += rec.zak;
-                            dailySkuMovements[recDate][skuName].in += rec.zak;
-                        } else if (isOut) {
-                            dailyOut[recDate] += rec.zak;
-                            totalMonthOut += rec.zak;
-                            dailySkuMovements[recDate][skuName].out += rec.zak;
-                        }
+                    if (isIn) {
+                        dailyInTon[recDate] += recTon;
+                        totalMonthInTon += recTon;
+                        dailySkuMovements[recDate][skuName].in += recTon;
+                    } else if (isOut) {
+                        dailyOutTon[recDate] -= recTon;
+                        totalMonthOutTon += recTon;
+                        dailySkuMovements[recDate][skuName].out += recTon;
                     }
                 }
             });
 
-            let currentLiveStock = totalZakSummary + todayZakDelta;
-            let dailyStock = new Array(daysInMonth + 1).fill(null);
-            dailyStock[todayDate] = currentLiveStock;
+            // Master Stock Summary is already the current closing Stock on Hand.
+            // Do not add today's transaction again or the stock would be double-counted.
+            let currentLiveStockTon = totalTonSummary;
+            let dailyStockTon = new Array(daysInMonth + 1).fill(null);
+            dailyStockTon[todayDate] = currentLiveStockTon;
 
+            // Reconstruct prior Stock on Hand from current closing stock.
+            // Formula: Stock(today) = Stock(yesterday) + IN(today) - OUT(today)
+            // dailyOutTon is negative, therefore: yesterday = today - IN - OUT.
+            // No clamp-to-zero: the stock line must reflect the real movement.
             for (let d = todayDate - 1; d >= 1; d--) {
-                dailyStock[d] = dailyStock[d + 1] - dailyIn[d + 1] + dailyOut[d + 1];
-                if(dailyStock[d] < 0) dailyStock[d] = 0;
+                dailyStockTon[d] =
+                    dailyStockTon[d + 1]
+                    - dailyInTon[d + 1]
+                    - dailyOutTon[d + 1];
             }
 
             let labels = [];
@@ -3200,16 +3319,12 @@
 
             for (let d = 1; d <= daysInMonth; d++) {
                 labels.push(d.toString());
-                fullPlotIn.push(dailyIn[d]);
-                fullPlotOut.push(dailyOut[d]);
-                if (d <= todayDate) {
-                    fullPlotStock.push(dailyStock[d]);
-                } else {
-                    fullPlotStock.push(null);
-                }
+                fullPlotIn.push(dailyInTon[d]);
+                fullPlotOut.push(dailyOutTon[d]);
+                fullPlotStock.push(d <= todayDate ? dailyStockTon[d] : null);
             }
 
-            const startStock = dailyStock[1] || currentLiveStock; 
+            const startStock = dailyStockTon[1] || currentLiveStockTon; 
 
             // -- TREND LINE CHART --
             const ctxTrend = document.getElementById('trendLineChart');
@@ -3236,7 +3351,7 @@
                         labels: labels,
                         datasets: [
                             {
-                                label: 'Stok on Hand',
+                                label: 'Stok on Hand — TON',
                                 data: [],
                                 segment: {
                                     borderColor: ctx => {
@@ -3262,7 +3377,7 @@
                                 order: 3
                             },
                             {
-                                label: 'Output Produksi (IN)',
+                                label: 'Output Produksi (IN) — TON',
                                 data: [],
                                 borderColor: '#00E5FF',
                                 backgroundColor: gradientIn,
@@ -3279,7 +3394,7 @@
                                 order: 2
                             },
                             {
-                                label: 'Delivery (OUT)',
+                                label: 'Delivery (OUT) — TON',
                                 data: [],
                                 borderColor: '#FF4D6D',
                                 backgroundColor: gradientOut,
@@ -3322,7 +3437,12 @@
                                     label: function(context) {
                                         let label = context.dataset.label || '';
                                         if (label) { label += ': '; }
-                                        if (context.parsed.y !== null) { label += new Intl.NumberFormat('id-ID').format(context.parsed.y) + ' ZAK'; }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('id-ID', {
+                                                minimumFractionDigits: 1,
+                                                maximumFractionDigits: 2
+                                            }).format(context.parsed.y) + ' TON';
+                                        }
                                         return label;
                                     },
                                     afterBody: function(context) {
@@ -3340,19 +3460,24 @@
                                             prevStock = fullPlotStock[dayIdx-1];
                                         }
 
+                                        const fmtTon = value => new Intl.NumberFormat('id-ID', {
+                                            minimumFractionDigits: 1,
+                                            maximumFractionDigits: 2
+                                        }).format(Number(value) || 0);
+
                                         let insights = [];
                                         insights.push('-------------------------');
                                         
                                         if (stockVal > prevStock && dayIdx > 0) {
-                                            insights.push(`📈 Tren Stok: NAIK (+${new Intl.NumberFormat('id-ID').format(stockVal - prevStock)} ZAK)`);
+                                            insights.push(`📈 Tren Stok: NAIK (+${fmtTon(stockVal - prevStock)} TON)`);
                                         } else if (stockVal < prevStock && dayIdx > 0) {
-                                            insights.push(`📉 Tren Stok: TURUN (-${new Intl.NumberFormat('id-ID').format(prevStock - stockVal)} ZAK)`);
+                                            insights.push(`📉 Tren Stok: TURUN (-${fmtTon(prevStock - stockVal)} TON)`);
                                         }
                                         
-                                        if (inVal > outVal) {
-                                            insights.push(`⚠️ Surplus Produksi: +${new Intl.NumberFormat('id-ID').format(inVal - outVal)} ZAK`);
-                                        } else if (outVal > inVal) {
-                                            insights.push(`🚀 Agresivitas Delivery: -${new Intl.NumberFormat('id-ID').format(outVal - inVal)} ZAK`);
+                                        if (inVal > Math.abs(outVal)) {
+                                            insights.push(`⚠️ Surplus Produksi: +${fmtTon(inVal - Math.abs(outVal))} TON`);
+                                        } else if (Math.abs(outVal) > inVal) {
+                                            insights.push(`🚀 Agresivitas Delivery: -${fmtTon(Math.abs(outVal) - inVal)} TON`);
                                         }
                                         
                                         insights.push('');
@@ -3376,8 +3501,8 @@
                                                 if (m.in === 0 && m.out === 0) continue;
                                                 
                                                 let text = `  ▪ ${sku}:`;
-                                                if (m.in > 0) text += ` IN +${new Intl.NumberFormat('id-ID').format(m.in)}`;
-                                                if (m.out > 0) text += `${m.in > 0 ? ' |' : ''} OUT -${new Intl.NumberFormat('id-ID').format(m.out)}`;
+                                                if (m.in > 0) text += ` IN +${fmtTon(m.in)} TON`;
+                                                if (m.out > 0) text += `${m.in > 0 ? ' |' : ''} OUT -${fmtTon(m.out)} TON`;
                                                 insights.push(text);
                                                 displayCount++;
                                             }
@@ -3399,13 +3524,13 @@
                                 type: 'linear', display: true, position: 'left', 
                                 grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false, borderDash: [5, 5] }, 
                                 ticks: { color: '#B8C0D9', font: {size: 10, family: 'JetBrains Mono'} }, 
-                                title: {display: true, text: 'Volume (ZAK)', color: '#B8C0D9', font: {size: 10, weight: 'bold'}} 
+                                title: {display: true, text: 'Volume (TON)', color: '#B8C0D9', font: {size: 10, weight: 'bold'}} 
                             },
                             yStock: { 
                                 type: 'linear', display: true, position: 'right', 
                                 grid: { drawOnChartArea: false }, 
                                 ticks: { color: '#00D084', font: {size: 10, family: 'JetBrains Mono'} }, 
-                                title: {display: true, text: 'Total Stok (ZAK)', color: '#00D084', font: {size: 10, weight: 'bold'}} 
+                                title: {display: true, text: 'Total Stok (TON)', color: '#00D084', font: {size: 10, weight: 'bold'}} 
                             }
                         }
                     }
@@ -3540,8 +3665,8 @@
                 trendLineChartInstance.update();
                 
                 // Update Donut accumulated values
-                accIn += dailyIn[currentDayIndex];
-                accOut += dailyOut[currentDayIndex];
+                accIn += dailyInTon[currentDayIndex];
+                accOut += Math.abs(dailyOutTon[currentDayIndex]);
                 
                 comparisonDonutChartInstance.data.datasets[0].data = [accIn, accOut];
                 comparisonDonutChartInstance.update();
@@ -3680,11 +3805,62 @@
             return found ? (Number(found.weight) || 0) : 0;
         }
 
+        // Tanggal untuk Transaction Summary HARUS sama persis dengan
+        // kolom Date pada menu Transaction Detail (DATA kolom pertama).
+        // Jangan gunakan transactionRecords.dateObj karena field tersebut
+        // berasal dari DATA column B dan dapat berbeda dari Date di Detail.
+        function getTransactionDetailDateObj(record) {
+            if (!record) return new Date(NaN);
+            const rawTimestamp = record.originalRow && record.originalRow[0] !== undefined
+                ? record.originalRow[0]
+                : record.rawDate;
+            if (!String(rawTimestamp ?? '').trim()) return new Date(NaN);
+
+            const str = String(rawTimestamp).trim();
+            let parsedDate = new Date(NaN);
+            const regexIndo = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})(?:\s+(\d{1,2})[:\.](\d{1,2})(?:[:\.](\d{1,2}))?)?/;
+            const matchIndo = str.match(regexIndo);
+            if (matchIndo) {
+                const p1 = parseInt(matchIndo[1], 10);
+                const p2 = parseInt(matchIndo[2], 10);
+                const year = parseInt(matchIndo[3], 10);
+                const hour = matchIndo[4] ? parseInt(matchIndo[4], 10) : 0;
+                const min = matchIndo[5] ? parseInt(matchIndo[5], 10) : 0;
+                const sec = matchIndo[6] ? parseInt(matchIndo[6], 10) : 0;
+                if (p2 >= 1 && p2 <= 12 && p1 >= 1 && p1 <= 31) {
+                    parsedDate = new Date(year, p2 - 1, p1, hour, min, sec);
+                } else if (p1 >= 1 && p1 <= 12 && p2 >= 1 && p2 <= 31) {
+                    parsedDate = new Date(year, p1 - 1, p2, hour, min, sec);
+                }
+            }
+            if (isNaN(parsedDate.getTime())) parsedDate = new Date(str);
+            return (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 2000)
+                ? parsedDate
+                : new Date(NaN);
+        }
+
+        function filterTransactionSummaryByDetailDate(dataArray, startDateId, endDateId) {
+            const startStr = document.getElementById(startDateId).value;
+            const endStr = document.getElementById(endDateId).value;
+            const startDate = startStr ? new Date(startStr) : new Date(0);
+            const endDate = endStr ? new Date(endStr) : new Date('2099-12-31');
+            endDate.setHours(23, 59, 59, 999);
+
+            return (Array.isArray(dataArray) ? dataArray : []).filter(item => {
+                const detailDate = getTransactionDetailDateObj(item);
+                // Sama seperti Transaction Detail: baris tanpa tanggal tetap tidak
+                // dipaksakan menjadi tanggal dari field lain.
+                if (isNaN(detailDate.getTime())) return false;
+                return detailDate >= startDate && detailDate <= endDate;
+            });
+        }
+
         function renderTransSummary() {
             const tbody = document.getElementById('transSummaryTableBody');
             if (!tbody) return;
 
-            const filteredRecords = filterTransactionByDate(transactionRecords, 'transStartSum', 'transEndSum');
+            // DATE SOURCE: Transaction Detail -> kolom Date (kolom pertama).
+            const filteredRecords = filterTransactionSummaryByDetailDate(transactionRecords, 'transStartSum', 'transEndSum');
             if (!filteredRecords || filteredRecords.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="px-3 md:px-6 py-6 md:py-12 text-center text-textSecondary italic text-[10px] md:text-xs">Tidak ada transaksi pada rentang tanggal ini.</td></tr>`;
                 return;
@@ -3692,13 +3868,16 @@
 
             const agg = {};
             filteredRecords.forEach(d => {
-                const dateFormatted = !isNaN(d.dateObj) ? d.dateObj.toLocaleDateString('en-GB') : d.rawDate;
-                // Tampilan mengikuti header yang diminta: Tanggal | SEGMENT | Jenis Transaksi | SKU/ Produk | Qty ZAK | Qty TON
+                const detailDateObj = getTransactionDetailDateObj(d);
+                const dateFormatted = !isNaN(detailDateObj)
+                    ? detailDateObj.toLocaleDateString('en-GB')
+                    : '-';
+                // Tanggal Summary 100% mengikuti Date pada Transaction Detail.
                 const key = `${dateFormatted}|${d.produk}|${d.type}|${d.projectDelivery}`;
                 if (!agg[key]) {
                     agg[key] = {
                         dateFormatted,
-                        dateObj: d.dateObj,
+                        dateObj: detailDateObj,
                         segment: d.produk,
                         type: d.type,
                         skuProduk: d.projectDelivery,
@@ -4091,8 +4270,6 @@
 
         async function exportAIExecutivePPT(event) {
             if (event) { event.preventDefault(); event.stopPropagation(); }
-
-            if (!requireDownloadAuth(() => exportAIExecutivePPT(), 'mengunduh PowerPoint AI Stock Intelligence')) return;
 
             const btn = document.getElementById('aiPptBtn');
 
@@ -4512,16 +4689,10 @@ ${JSON.stringify(payload)}`;
             if (document.getElementById('authUsername').value.trim() === atob(SEC_U) && document.getElementById('authPassword').value.trim() === atob(SEC_P)) {
                 isAuthenticated = true; updateAuthUI(); closeAuthModal(); showToast('Akses Diberikan', 'Sesi privat berhasil diverifikasi.', 'success');
                 if (pendingTargetTab) switchMainTab(pendingTargetTab);
-                if (pendingDownloadAction) {
-                    const action = pendingDownloadAction;
-                    pendingDownloadAction = null;
-                    setTimeout(() => action(), 150);
-                }
             } else { document.getElementById('authErrorMsg').classList.remove('hidden'); document.getElementById('authErrorText').innerText = 'Username atau Password salah!'; }
         }
         function logoutSession() { 
             isAuthenticated = false; 
-            pendingDownloadAction = null;
             updateAuthUI(); 
             showToast('Sesi Terkunci', 'Anda telah kembali ke mode Publik.', 'info'); 
             if (['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'].includes(activeMainTab)) switchMainTab('stock'); 
@@ -4665,22 +4836,7 @@ ${JSON.stringify(payload)}`;
             setTimeout(() => showToast('Export Success', 'Executive format downloaded.', 'success'), 500);
         }
 
-        function requireDownloadAuth(action, label = 'Download') {
-            if (isAuthenticated) return true;
-            pendingDownloadAction = action;
-            showToast('Login Required', `Silakan login terlebih dahulu untuk ${label}.`, 'warning');
-            openAuthModal();
-            return false;
-        }
-
         function exportData() {
-            // Stock Overview is the only stock menu whose download is public.
-            // All other export/download actions remain protected by their own guards.
-            // ONLY the main "Stok Overview" menu is public.
-            // "Stock Summary Overview", "Master Stock Details", and other exports remain private.
-            if (activeMainTab !== 'stock') {
-                if (!requireDownloadAuth(() => exportData(), 'mengunduh file Excel')) return;
-            }
             showToast('Exporting...', 'Preparing standard Excel report (Template Style)...', 'info');
             const wb = XLSX.utils.book_new(), now = new Date(), ws = {};
             const printDateStr = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth()+1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} WIB`;

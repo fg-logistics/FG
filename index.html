@@ -676,7 +676,10 @@
                                     <i class="ph-fill ph-chart-donut text-accentPurple text-base md:text-lg"></i> Segment Stock Share
                                 </h3>
                                 <div class="flex-1 relative flex items-center justify-center w-full">
-                                    <canvas id="stockDonutChart"></canvas>
+                                    <div id="segmentDonutCanvasWrap" class="relative w-full h-full flex items-center justify-center">
+                                        <canvas id="stockDonutChart"></canvas>
+                                </div>
+                            </div>
                                 </div>
                             </div>
                             <div class="glass-panel rounded-2xl p-4 md:p-5 border border-borderMain flex-1 flex flex-col min-h-[200px]">
@@ -707,6 +710,7 @@
                                 <!-- Custom Center Text for 3D Donut -->
                                 <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-6">
                                     <span id="donutCenterPct" class="text-2xl md:text-4xl font-black font-mono">0%</span>
+                                    <span id="donutCenterTon" class="text-[11px] md:text-sm text-white font-black font-mono mt-1">0,0 TON</span>
                                     <span id="donutCenterLabel" class="text-[9px] md:text-[10px] text-textSecondary uppercase tracking-widest font-bold mt-1">Perubahan Stok</span>
                                 </div>
                             </div>
@@ -3190,24 +3194,205 @@
             const segMap = {}; summaryData.forEach(item => { if(!segMap[item.segment]) segMap[item.segment] = 0; segMap[item.segment] += item.qtyTon; });
             const customOrder = ['RETAIL', 'PROJECT', 'GENERAL'], labels = Object.keys(segMap).sort((a, b) => { let idxA = customOrder.indexOf(a.toUpperCase()), idxB = customOrder.indexOf(b.toUpperCase()); return (idxA !== idxB) ? idxA - idxB : a.localeCompare(b); });
             const dataVals = labels.map(l => segMap[l]), chartColors = ['#00E5FF', '#6D5DF6', '#00D084', '#FFB800'];
+
+            // Center labels: show the percentage share of RETAIL and PROJECT.
+            // Percentage = segment TON / total segment TON × 100.
+            const totalSegmentTon = Object.values(segMap).reduce((sum, v) => sum + (Number(v) || 0), 0);
+            const getSegmentPct = name => {
+                const key = Object.keys(segMap).find(k => String(k).trim().toUpperCase() === name);
+                const value = key ? Number(segMap[key]) || 0 : 0;
+                return totalSegmentTon > 0 ? (value / totalSegmentTon) * 100 : 0;
+            };
             const ctxDonut = document.getElementById('stockDonutChart');
             if(ctxDonut) {
                 if(stockDonutChartInstance) stockDonutChartInstance.destroy();
                 const isMobile = window.innerWidth < 768;
+                const segmentCenterPlugin = {
+                    id: 'segmentCenterPlugin',
+                    afterDraw(chart) {
+                        const {ctx, chartArea} = chart;
+                        if (!chartArea) return;
+
+                        const total = Object.values(segMap).reduce((s, v) => s + (Number(v) || 0), 0);
+                        if (total <= 0) return;
+
+                        const retailKey = Object.keys(segMap).find(k => String(k).trim().toUpperCase() === 'RETAIL');
+                        const projectKey = Object.keys(segMap).find(k => String(k).trim().toUpperCase() === 'PROJECT');
+                        const retailTon = retailKey ? Number(segMap[retailKey]) || 0 : 0;
+                        const projectTon = projectKey ? Number(segMap[projectKey]) || 0 : 0;
+                        const retailPct = (retailTon / total) * 100;
+                        const projectPct = (projectTon / total) * 100;
+
+                        const fmtTon = value => new Intl.NumberFormat('id-ID', {
+                            minimumFractionDigits: 1,
+                            maximumFractionDigits: 1
+                        }).format(value);
+
+                        const meta = chart.getDatasetMeta(0);
+                        const arcs = meta && meta.data ? meta.data : [];
+                        if (!arcs.length) return;
+
+                        /*
+                         * TRUE CIRCULAR LABELS
+                         * Each character is positioned individually around the
+                         * circumference. This avoids the previous "tiny text at
+                         * the top" problem caused by rotating one whole string.
+                         */
+                        const drawCircularText = (arc, textValue, color) => {
+                            const cx = arc.x;
+                            const cy = arc.y;
+                            const radius = arc.outerRadius + (window.innerWidth < 768 ? 25 : 34);
+                            const start = arc.startAngle;
+                            const end = arc.endAngle;
+                            const mid = (start + end) / 2;
+
+                            const chars = [...textValue];
+                            if (!chars.length) return;
+
+                            // Angular width available for the text.
+                            // Leave a comfortable margin inside each segment.
+                            const available = Math.max(0.55, (end - start) - 0.22);
+
+                            // Character angular step; clamp so long text remains
+                            // completely inside its own segment.
+                            const maxStep = available / Math.max(chars.length - 1, 1);
+                            const step = Math.min(0.085, maxStep);
+
+                            // Center the complete string on the segment midpoint.
+                            const textSpan = step * Math.max(chars.length - 1, 1);
+                            const firstAngle = mid - textSpan / 2;
+
+                            ctx.save();
+                            ctx.font = `700 ${window.innerWidth < 768 ? 5.5 : 7}px "Plus Jakarta Sans", sans-serif`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillStyle = color;
+                            ctx.shadowColor = color;
+                            ctx.shadowBlur = 5;
+
+                            chars.forEach((ch, i) => {
+                                let angle = firstAngle + (i * step);
+
+                                // Keep text upright. On the lower half of the
+                                // circle, rotate 180° so it is never upside down.
+                                let rotation = angle + Math.PI / 2;
+                                const normalized = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+                                if (normalized > Math.PI / 2 && normalized < Math.PI * 1.5) {
+                                    rotation += Math.PI;
+                                }
+
+                                const x = cx + Math.cos(angle) * radius;
+                                const y = cy + Math.sin(angle) * radius;
+
+                                ctx.save();
+                                ctx.translate(x, y);
+                                ctx.rotate(rotation);
+                                ctx.fillText(ch, 0, 0);
+                                ctx.restore();
+                            });
+
+                            ctx.restore();
+                        };
+
+                        const drawDot = (arc, angle, color) => {
+                            const radius = arc.outerRadius + (window.innerWidth < 768 ? 12 : 17);
+                            const x = arc.x + Math.cos(angle) * radius;
+                            const y = arc.y + Math.sin(angle) * radius;
+
+                            ctx.save();
+                            ctx.fillStyle = color;
+                            ctx.shadowColor = color;
+                            ctx.shadowBlur = 8;
+                            ctx.beginPath();
+                            ctx.arc(x, y, window.innerWidth < 768 ? 1.8 : 2.4, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.restore();
+                        };
+
+                        if (arcs[0]) {
+                            drawCircularText(
+                                arcs[0],
+                                `RETAIL • ${retailPct.toFixed(1)}% • ${fmtTon(retailTon)} TON`,
+                                '#00E5FF'
+                            );
+                            drawDot(arcs[0], arcs[0].startAngle + 0.12, '#00E5FF');
+                            drawDot(arcs[0], arcs[0].endAngle - 0.12, '#00E5FF');
+                        }
+
+                        if (arcs[1]) {
+                            drawCircularText(
+                                arcs[1],
+                                `PROJECT • ${projectPct.toFixed(1)}% • ${fmtTon(projectTon)} TON`,
+                                '#8A6CFF'
+                            );
+                            drawDot(arcs[1], arcs[1].startAngle + 0.12, '#8A6CFF');
+                            drawDot(arcs[1], arcs[1].endAngle - 0.12, '#8A6CFF');
+                        }
+
+                        // Clean Image-2 style center information.
+                        const cx = (chartArea.left + chartArea.right) / 2;
+                        const cy = (chartArea.top + chartArea.bottom) / 2;
+
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        ctx.font = '700 6px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#AEB7D0';
+                        ctx.fillText('STOCK SHARE', cx, cy - 28);
+
+                        ctx.font = '800 9px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#00E5FF';
+                        ctx.fillText('RETAIL', cx, cy - 13);
+
+                        ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#00E5FF';
+                        ctx.fillText(`${retailPct.toFixed(1)}%`, cx, cy + 1);
+
+                        ctx.font = '700 7px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#D8DEEF';
+                        ctx.fillText(`${fmtTon(retailTon)} TON`, cx, cy + 14);
+
+                        ctx.strokeStyle = 'rgba(174,183,208,0.18)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(cx - 42, cy + 26);
+                        ctx.lineTo(cx + 42, cy + 26);
+                        ctx.stroke();
+
+                        ctx.font = '800 9px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#8A6CFF';
+                        ctx.fillText('PROJECT', cx, cy + 40);
+
+                        ctx.font = '800 15px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#8A6CFF';
+                        ctx.fillText(`${projectPct.toFixed(1)}%`, cx, cy + 54);
+
+                        ctx.font = '700 7px "Plus Jakarta Sans", sans-serif';
+                        ctx.fillStyle = '#D8DEEF';
+                        ctx.fillText(`${fmtTon(projectTon)} TON`, cx, cy + 67);
+
+                        ctx.restore();
+                    }
+                };
+
                 stockDonutChartInstance = new Chart(ctxDonut.getContext('2d'), { 
                     type: 'doughnut', 
                     data: { labels: labels, datasets: [{ data: dataVals, backgroundColor: chartColors.slice(0, labels.length), borderWidth: 0 }] }, 
                     options: { 
                         responsive: true, 
                         maintainAspectRatio: false, 
-                        cutout: '75%', 
+                        cutout: '70%',
+                        layout: { padding: { top: isMobile ? 30 : 46, right: isMobile ? 26 : 48, bottom: isMobile ? 30 : 46, left: isMobile ? 26 : 48 } },
                         plugins: { 
                             legend: { 
                                 position: isMobile ? 'bottom' : 'right', 
                                 labels: { color: '#B8C0D9', font: { family: 'Plus Jakarta Sans', size: isMobile ? 10 : 11 }, usePointStyle: true, padding: isMobile ? 10 : 16 } 
                             } 
-                        } 
-                    } 
+                        }
+                    },
+                    plugins: [segmentCenterPlugin] 
                 });
             }
 
@@ -3591,7 +3776,7 @@
                                         let datasetData = context.chart.data.datasets[0].data;
                                         let currentTot = (datasetData[0] || 0) + (datasetData[1] || 0);
                                         let pct = currentTot > 0 ? ((val / currentTot) * 100).toFixed(1) : 0;
-                                        return ` ${label}: ${new Intl.NumberFormat('id-ID').format(val)} ZAK (${pct}%)`;
+                                        return ` ${label}: ${new Intl.NumberFormat('id-ID', {minimumFractionDigits: 1, maximumFractionDigits: 1}).format(val)} TON (${pct}%)`;
                                     },
                                     afterLabel: function(context) {
                                         let datasetData = context.chart.data.datasets[0].data;
@@ -3604,8 +3789,8 @@
                                         let absDiff = new Intl.NumberFormat('id-ID').format(Math.abs(diff));
                                         
                                         if (label.includes('Output')) {
-                                            if (diff > 0) return `\n⚡ INSIGHT DIGITAL:\nOutput melebihi target Delivery sebesar ${absDiff} ZAK.\nTrend stok menunjukkan akumulasi positif.`;
-                                            else if (diff < 0) return `\n⚡ INSIGHT DIGITAL:\nDefisit Output sebesar ${absDiff} ZAK vs Delivery.\nMembutuhkan eskalasi produksi segera.`;
+                                            if (diff > 0) return `\n⚡ INSIGHT DIGITAL:\nOutput melebihi target Delivery sebesar ${absDiff} TON.\nTrend stok menunjukkan akumulasi positif.`;
+                                            else if (diff < 0) return `\n⚡ INSIGHT DIGITAL:\nDefisit Output sebesar ${absDiff} TON vs Delivery.\nMembutuhkan eskalasi produksi segera.`;
                                             else return `\n⚡ INSIGHT DIGITAL:\nKeseimbangan tercapai (Produksi = Delivery).`;
                                         } else {
                                             if (diff < 0) return `\n⚡ INSIGHT DIGITAL:\nAgresivitas Delivery tinggi (Outflow > Inflow).\nBuffer stok gudang mengalami penurunan.`;
@@ -3622,30 +3807,42 @@
 
             const updateCenterLabel = (inVal, outVal) => {
                 const pctEl = document.getElementById('donutCenterPct');
+                const tonEl = document.getElementById('donutCenterTon');
                 const labelEl = document.getElementById('donutCenterLabel');
-                if (!pctEl || !labelEl) return;
-                
+                if (!pctEl || !tonEl || !labelEl) return;
+
+                const netChange = Number(inVal || 0) - Number(outVal || 0);
+                const pctChange = startStock > 0 ? (netChange / startStock) * 100 : 0;
+                const fmtTon = value => new Intl.NumberFormat('id-ID', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                }).format(Math.abs(Number(value) || 0));
+
                 if (inVal === 0 && outVal === 0) {
                     pctEl.innerText = '-';
+                    tonEl.innerText = '0,0 TON';
                     pctEl.className = 'text-2xl md:text-4xl font-black font-mono text-textSecondary';
+                    tonEl.className = 'text-[11px] md:text-sm text-textSecondary font-black font-mono mt-1';
                     labelEl.innerText = 'Menunggu Data';
                     return;
                 }
-                
-                const netChange = inVal - outVal;
-                let pctChange = startStock > 0 ? (netChange / startStock) * 100 : 0;
-                
-                const prefix = pctChange > 0 ? '+' : '';
-                pctEl.innerText = `${prefix}${pctChange.toFixed(1)}%`;
-                
+
+                const pctPrefix = pctChange > 0 ? '+' : (pctChange < 0 ? '-' : '');
+                const tonPrefix = netChange > 0 ? '+' : (netChange < 0 ? '-' : '');
+                pctEl.innerText = `${pctPrefix}${Math.abs(pctChange).toFixed(1)}%`;
+                tonEl.innerText = `${tonPrefix}${fmtTon(netChange)} TON`;
+
                 if (pctChange > 0) {
                     pctEl.className = 'text-2xl md:text-4xl font-black font-mono text-statusSuccess drop-shadow-[0_0_10px_rgba(0,208,132,0.3)]';
+                    tonEl.className = 'text-[11px] md:text-sm text-statusSuccess font-black font-mono mt-1';
                     labelEl.innerText = 'Kenaikan Stok';
                 } else if (pctChange < 0) {
                     pctEl.className = 'text-2xl md:text-4xl font-black font-mono text-statusDanger drop-shadow-[0_0_10px_rgba(255,77,109,0.3)]';
+                    tonEl.className = 'text-[11px] md:text-sm text-statusDanger font-black font-mono mt-1';
                     labelEl.innerText = 'Penurunan Stok';
                 } else {
                     pctEl.className = 'text-2xl md:text-4xl font-black font-mono text-white';
+                    tonEl.className = 'text-[11px] md:text-sm text-white font-black font-mono mt-1';
                     labelEl.innerText = 'Stok Stabil';
                 }
             };
@@ -3873,12 +4070,16 @@
                     ? detailDateObj.toLocaleDateString('en-GB')
                     : '-';
                 // Tanggal Summary 100% mengikuti Date pada Transaction Detail.
-                const key = `${dateFormatted}|${d.produk}|${d.type}|${d.projectDelivery}`;
+                // SEGMENT Summary harus 100% sama dengan kolom Segment
+                // pada Transaction Detail.
+                // Transaction Detail menyimpan Segment di d.segment,
+                // sedangkan d.produk adalah SKU/Product.
+                const key = `${dateFormatted}|${d.segment}|${d.type}|${d.projectDelivery}`;
                 if (!agg[key]) {
                     agg[key] = {
                         dateFormatted,
                         dateObj: detailDateObj,
-                        segment: d.produk,
+                        segment: d.segment,
                         type: d.type,
                         skuProduk: d.projectDelivery,
                         zak: 0,

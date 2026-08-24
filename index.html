@@ -2463,11 +2463,16 @@
             };
 
             /*
-             * SINGLE DATE RULE FOR ALL EXECUTIVE REPORTS:
-             * DATA column B (index 1) is ALWAYS the transaction Date.
-             * Report > Summary and Report > Detail must use this same field.
+             * DATA DATE/TIMESTAMP RULE:
+             * DATA column A (index 0) = timestamp/update time.
+             * DATA column B (index 1) = transaction date.
+             *
+             * IMPORTANT:
+             * - Update Terakhir MUST use the newest timestamp from column A.
+             * - Transaction/report date MUST continue using column B.
              */
-            let idxDate = 1; // ALWAYS DATA column B = Date. Do not auto-detect another date column.
+            const idxTimestamp = 0; // DATA column A = timestamp update
+            const idxDate = 1;      // DATA column B = transaction date
 
             let idxSegment = findHeaderIndex(['segment', 'segmen']);
             let idxType = findHeaderIndex(['type', 'tipe', 'jenis transaksi', 'transaction type']);
@@ -2498,22 +2503,30 @@
             transactionRawData.rows = validTransRows;
 
             validTransRows.forEach(r => {
-                const rowTimestamp = r[idxDate] !== undefined ? r[idxDate] : '';
+                // Column A = timestamp/update time.
+                // Column B = transaction date.
+                const rowTimestamp = r[idxTimestamp] !== undefined ? r[idxTimestamp] : '';
+                const rowTransactionDate = r[idxDate] !== undefined ? r[idxDate] : '';
                 const rowSeg = r[idxSegment] || 'GENERAL';
                 const rowType = r[idxType] || 'STANDARD';
                 const rowProd = r[idxProduk] || '-';
                 const rowProjDel = r[idxProjectDelivery] || '-';
 
+                // Keep transaction date for transaction/report calculations.
                 let trDateObj = new Date(NaN);
-                if (String(rowTimestamp).trim()) {
-                    trDateObj = parseReportDate(rowTimestamp);
-                    if (!isNaN(trDateObj.getTime()) && trDateObj.getFullYear() > 2000) {
-                        if (trDateObj > latestDateObj) {
-                            latestDateObj = trDateObj;
-                            foundValidDate = true;
-                        }
-                    } else {
+                if (String(rowTransactionDate).trim()) {
+                    trDateObj = parseReportDate(rowTransactionDate);
+                    if (isNaN(trDateObj.getTime()) || trDateObj.getFullYear() <= 2000) {
                         trDateObj = new Date(NaN);
+                    }
+                }
+
+                // Update Terakhir MUST come from the newest timestamp in column A.
+                const timestampObj = String(rowTimestamp).trim() ? parseReportDate(rowTimestamp) : new Date(NaN);
+                if (!isNaN(timestampObj.getTime()) && timestampObj.getFullYear() > 2000) {
+                    if (timestampObj > latestDateObj) {
+                        latestDateObj = timestampObj;
+                        foundValidDate = true;
                     }
                 }
 
@@ -2524,7 +2537,7 @@
                 }
 
                 transactionRecords.push({
-                    rawDate: String(rowTimestamp || '').trim() || '-',
+                    rawDate: String(rowTransactionDate || '').trim() || '-',
                     dateObj: trDateObj,
                     segment: String(rowSeg || 'GENERAL').trim(),
                     type: String(rowType || 'STANDARD').trim(),

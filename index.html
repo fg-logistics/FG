@@ -177,6 +177,36 @@
         .ai-dashboard-shell .ai-kpi-card span { font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:#B8C0D9; font-weight:700; }
         .ai-dashboard-shell .ai-kpi-card strong { margin-top:8px; font-size:22px; line-height:1.1; color:#fff; font-family:'JetBrains Mono',monospace; }
         .ai-dashboard-shell .ai-kpi-card small { margin-top:8px; font-size:9px; color:#7E89A8; }
+
+        /* PLAN DELIVERY - premium KPI cards */
+        .pd-kpi-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; }
+        .pd-kpi-card { position:relative; overflow:hidden; min-height:116px; padding:16px; border-radius:18px; background:linear-gradient(145deg,rgba(17,28,51,.96),rgba(7,11,20,.88)); border:1px solid rgba(255,255,255,.08); box-shadow:0 10px 28px rgba(0,0,0,.28); transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease; }
+        .pd-kpi-card:hover { transform:translateY(-2px); border-color:rgba(0,229,255,.22); box-shadow:0 14px 34px rgba(0,0,0,.34),0 0 22px rgba(0,229,255,.06); }
+        .pd-kpi-card::after { content:""; position:absolute; width:110px; height:110px; border-radius:50%; right:-46px; top:-50px; background:var(--pd-glow,rgba(0,229,255,.10)); filter:blur(4px); pointer-events:none; }
+        .pd-kpi-card .pd-kpi-icon { width:34px; height:34px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:var(--pd-icon-bg,rgba(0,229,255,.10)); color:var(--pd-icon,#00E5FF); border:1px solid var(--pd-border,rgba(0,229,255,.18)); font-size:17px; }
+        .pd-kpi-card .pd-kpi-label { margin-top:11px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.11em; color:#9DA8C2; line-height:1.25; }
+        .pd-kpi-card .pd-kpi-value { margin-top:4px; font-size:23px; line-height:1.05; font-weight:900; color:#fff; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+        .pd-kpi-card .pd-kpi-meta { margin-top:6px; font-size:9px; color:#6F7B97; line-height:1.3; }
+        .pd-kpi-card.pd-success { --pd-icon:#00D084; --pd-icon-bg:rgba(0,208,132,.10); --pd-border:rgba(0,208,132,.20); --pd-glow:rgba(0,208,132,.09); }
+        .pd-kpi-card.pd-cyan { --pd-icon:#00E5FF; --pd-icon-bg:rgba(0,229,255,.10); --pd-border:rgba(0,229,255,.20); --pd-glow:rgba(0,229,255,.09); }
+        .pd-kpi-card.pd-purple { --pd-icon:#A69BFF; --pd-icon-bg:rgba(109,93,246,.12); --pd-border:rgba(109,93,246,.22); --pd-glow:rgba(109,93,246,.10); }
+        .pd-kpi-card.pd-warning { --pd-icon:#FFB800; --pd-icon-bg:rgba(255,184,0,.10); --pd-border:rgba(255,184,0,.20); --pd-glow:rgba(255,184,0,.08); }
+        .pd-kpi-card.pd-danger { --pd-icon:#FF4D6D; --pd-icon-bg:rgba(255,77,109,.10); --pd-border:rgba(255,77,109,.20); --pd-glow:rgba(255,77,109,.10); }
+        .pd-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px 16px; background:rgba(7,11,20,.34); border-bottom:1px solid rgba(255,255,255,.06); }
+        .pd-toolbar-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.11em; color:#6F7B97; margin-right:2px; }
+        .pd-table-shell { border-top:1px solid rgba(255,255,255,.06); }
+        .pd-table thead th { background:linear-gradient(180deg,#172641,#122039); color:#AEB8D0; letter-spacing:.09em; font-size:9px; font-weight:800; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,.08); }
+        .pd-table tbody tr.pd-do-row { background:linear-gradient(90deg,rgba(0,229,255,.07),rgba(109,93,246,.03)); border-top:1px solid rgba(0,229,255,.16); }
+        .pd-table tbody tr.pd-do-row:hover { background:linear-gradient(90deg,rgba(0,229,255,.10),rgba(109,93,246,.05)); }
+        .pd-do-no { font-family:'JetBrains Mono',monospace; font-weight:900; color:#00E5FF; }
+        .pd-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:999px; font-size:8px; font-weight:800; border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.04); color:#B8C0D9; }
+        .pd-pill-consolidated { color:#FFB800; background:rgba(255,184,0,.08); border-color:rgba(255,184,0,.18); }
+        .pd-qty-main { font-family:'JetBrains Mono',monospace; font-weight:900; color:#00E5FF; }
+        .pd-subrow { background:rgba(7,11,20,.28); }
+        .pd-subrow:hover { background:rgba(255,255,255,.025); }
+        @media (max-width: 1200px) { .pd-kpi-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+        @media (max-width: 700px) { .pd-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .pd-kpi-card { min-height:108px; padding:13px; } .pd-kpi-card .pd-kpi-value { font-size:19px; } }
+        @media (max-width: 460px) { .pd-kpi-grid { grid-template-columns:1fr; } }
         .ai-dashboard-shell .ai-kpi-success strong { color:#00D084; }
         .ai-dashboard-shell .ai-kpi-danger strong { color:#FF4D6D; }
         .ai-chart-section { background:rgba(14,22,40,.55); border:1px solid rgba(255,255,255,.07); border-radius:18px; padding:16px; }
@@ -197,6 +227,45 @@
         .ai-final-content { background:rgba(7,11,20,.52); border-radius:14px; padding:16px; color:#B8C0D9; font-size:12px; line-height:1.85; min-height:180px; }
         .ai-final-content strong { color:#fff; }
         .ai-empty-state { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:#7E89A8; }
+
+
+        /* Actual Stock VS SO — premium KPI cards */
+        .avs-kpi-grid {
+            display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px;
+        }
+        .avs-kpi-card {
+            position:relative; min-height:118px; padding:16px 16px 14px;
+            border-radius:16px; overflow:hidden;
+            background:linear-gradient(145deg, rgba(17,28,51,.96), rgba(7,11,20,.92));
+            border:1px solid rgba(255,255,255,.08);
+            box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 10px 28px rgba(0,0,0,.22);
+            transition:transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+        }
+        .avs-kpi-card:hover {
+            transform:translateY(-2px);
+            border-color:rgba(0,229,255,.28);
+            box-shadow:0 14px 32px rgba(0,0,0,.32), 0 0 22px rgba(0,229,255,.08);
+        }
+        .avs-kpi-card::before {
+            content:""; position:absolute; left:0; right:0; top:0; height:3px;
+            background:linear-gradient(90deg,#00E5FF,#6D5DF6); opacity:.9;
+        }
+        .avs-kpi-card.danger::before { background:linear-gradient(90deg,#FF4D6D,#FF8A9B); }
+        .avs-kpi-card.success::before { background:linear-gradient(90deg,#00D084,#00E5FF); }
+        .avs-kpi-head { display:flex; align-items:center; gap:10px; }
+        .avs-kpi-icon {
+            width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+            flex:none; background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.14); color:#00E5FF;
+        }
+        .avs-kpi-card.danger .avs-kpi-icon { color:#FF4D6D; background:rgba(255,77,109,.08); border-color:rgba(255,77,109,.15); }
+        .avs-kpi-card.success .avs-kpi-icon { color:#00D084; background:rgba(0,208,132,.08); border-color:rgba(0,208,132,.15); }
+        .avs-kpi-label { font-size:10px; font-weight:800; color:#B8C0D9; text-transform:uppercase; letter-spacing:.10em; white-space:nowrap; }
+        .avs-kpi-value { margin-top:12px; font-family:'JetBrains Mono',monospace; font-weight:900; font-size:24px; line-height:1.05; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .avs-kpi-card.danger .avs-kpi-value { color:#FF6B84; }
+        .avs-kpi-meta { margin-top:8px; font-size:9px; color:#7E89A8; line-height:1.35; }
+        .avs-kpi-badge { margin-left:auto; font-size:8px; font-weight:800; padding:4px 7px; border-radius:999px; color:#00E5FF; background:rgba(0,229,255,.07); border:1px solid rgba(0,229,255,.12); }
+        @media (max-width:1100px) { .avs-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media (max-width:640px) { .avs-kpi-grid { grid-template-columns:1fr; } .avs-kpi-value { font-size:22px; } }
 
         .prose-ai { color:#B8C0D9; line-height:1.9; font-size:12px; }
         .prose-ai .ai-provenance { display:flex; justify-content:space-between; gap:10px; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid rgba(255,255,255,.07); color:#7E89A8; font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
@@ -267,18 +336,21 @@
                             <i class="ph-bold ph-sparkle text-xl group-hover:text-accentPurple transition-colors"></i>
                             <span class="flex-1">AI Stock Analyst</span>
                             <span class="text-[8px] bg-accentPurple/15 text-accentPurple border border-accentPurple/20 px-1.5 py-0.5 rounded font-bold">AI</span>
+                                                    <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
                         </button>
                     </li>
                     <li>
                         <button id="nav-btn-detail" onclick="handleTabClick('detail')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
                             <i class="ph-bold ph-database text-xl group-hover:text-accentPurple transition-colors"></i>
                             <span class="flex-1">Master Stock Details</span>
+                                                    <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
                         </button>
                     </li>
                     <li>
                         <button id="nav-btn-summary-only" onclick="handleTabClick('summary-only')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
                             <i class="ph-bold ph-table text-xl group-hover:text-accentCyan transition-colors"></i>
                             <span class="flex-1">Stock Summary Overview</span>
+                                                    <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
                         </button>
                     </li>
                     <li>
@@ -286,6 +358,7 @@
                             <i class="ph-bold ph-truck text-xl group-hover:text-accentCyan transition-colors"></i>
                             <span class="flex-1">Delivery Requirement</span>
                             <i id="actualVsSoMenuCaret" class="ph-bold ph-caret-down text-accentPurple transition-transform"></i>
+                                                    <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
                         </button>
                         <div id="actualVsSoSubmenu" class="ml-3 mt-1 pl-3 border-l border-borderMain/60 space-y-1">
                             <button id="nav-btn-actual-vs-so" onclick="handleTabClick('actual-vs-so')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
@@ -295,7 +368,8 @@
                             <button id="nav-btn-plan-delivery" onclick="handleTabClick('plan-delivery')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
                                 <i class="ph-bold ph-calendar-check text-accentCyan"></i>
                                 <span class="flex-1">Plan Delivery</span>
-                            </button>
+                                                        <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
+                        </button>
                         </div>
                     </li>
                     <!-- Report Menu (Private) -->
@@ -310,11 +384,13 @@
                             <button id="nav-btn-exec-report-summary" onclick="handleTabClick('exec-report')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
                                 <i class="ph-bold ph-table text-accentCyan"></i>
                                 <span class="flex-1">Summary</span>
-                            </button>
+                                                        <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
+                        </button>
                             <button id="nav-btn-exec-report-detail" onclick="handleTabClick('exec-report-detail')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
                                 <i class="ph-bold ph-list-dashes text-accentPurple"></i>
                                 <span class="flex-1">Detail</span>
-                            </button>
+                                                        <i class="ph-bold ph-lock-key text-statusWarning private-lock-icon" title="Private Access"></i>
+                        </button>
                         </div>
                     </li>
                     <!-- Stok SIG Menu (Private) -->
@@ -922,12 +998,44 @@
                             </div>
                         </div>
 
-                        <div class="p-4 md:p-5 border-b border-borderMain">
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div class="ai-kpi-card"><span>Material Shortage</span><strong id="avsKpiMaterial">0</strong><small>SKU material terdampak</small></div>
-                                <div class="ai-kpi-card ai-kpi-danger"><span>Shortage TON</span><strong id="avsKpiShortage">0 TON</strong><small>SO di atas actual stock</small></div>
-                                <div class="ai-kpi-card"><span>Actual Stock</span><strong id="avsKpiActual">0 TON</strong><small>Stock tersedia</small></div>
-                                <div class="ai-kpi-card"><span>Total SO</span><strong id="avsKpiSo">0 TON</strong><small>Kebutuhan SO</small></div>
+                        <div class="p-4 md:p-5 border-b border-borderMain bg-gradient-to-b from-bgPrimary/30 to-transparent">
+                            <div class="avs-kpi-grid">
+                                <div class="avs-kpi-card danger">
+                                    <div class="avs-kpi-head">
+                                        <div class="avs-kpi-icon"><i class="ph-fill ph-warning-octagon text-lg"></i></div>
+                                        <div class="avs-kpi-label">Material Shortage</div>
+                                        <div class="avs-kpi-badge">RISK</div>
+                                    </div>
+                                    <div id="avsKpiMaterial" class="avs-kpi-value">0</div>
+                                    <div class="avs-kpi-meta">SKU material terdampak</div>
+                                </div>
+                                <div class="avs-kpi-card danger">
+                                    <div class="avs-kpi-head">
+                                        <div class="avs-kpi-icon"><i class="ph-fill ph-trend-down text-lg"></i></div>
+                                        <div class="avs-kpi-label">Shortage</div>
+                                        <div class="avs-kpi-badge">GAP</div>
+                                    </div>
+                                    <div id="avsKpiShortage" class="avs-kpi-value">0 TON</div>
+                                    <div class="avs-kpi-meta">SO melebihi actual stock</div>
+                                </div>
+                                <div class="avs-kpi-card success">
+                                    <div class="avs-kpi-head">
+                                        <div class="avs-kpi-icon"><i class="ph-fill ph-warehouse text-lg"></i></div>
+                                        <div class="avs-kpi-label">Actual Stock</div>
+                                        <div class="avs-kpi-badge">FG</div>
+                                    </div>
+                                    <div id="avsKpiActual" class="avs-kpi-value">0 TON</div>
+                                    <div class="avs-kpi-meta">Stok FG tersedia saat ini</div>
+                                </div>
+                                <div class="avs-kpi-card">
+                                    <div class="avs-kpi-head">
+                                        <div class="avs-kpi-icon"><i class="ph-fill ph-file-text text-lg"></i></div>
+                                        <div class="avs-kpi-label">Total SO</div>
+                                        <div class="avs-kpi-badge">DEMAND</div>
+                                    </div>
+                                    <div id="avsKpiSo" class="avs-kpi-value">0 TON</div>
+                                    <div class="avs-kpi-meta">Total kebutuhan Sales Order</div>
+                                </div>
                             </div>
                         </div>
 
@@ -1016,23 +1124,49 @@
                         </div>
 
                         <div class="p-4 md:p-5 border-b border-borderMain">
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                                <div class="ai-kpi-card ai-kpi-success"><span>Total Delivery / Rilis</span><strong id="pdKpiTon">0 TON</strong><small>Total Qty Delivery</small></div>
-                                <div class="ai-kpi-card"><span>CDD</span><strong id="pdKpiCDD">0</strong><small>Unit kendaraan</small></div>
-                                <div class="ai-kpi-card"><span>Tronton</span><strong id="pdKpiTronton">0</strong><small>Unit kendaraan</small></div>
-                                <div class="ai-kpi-card"><span>Container</span><strong id="pdKpiContainer">0</strong><small>Unit kendaraan</small></div>
-                                <div class="ai-kpi-card ai-kpi-danger"><span>Material Shortage</span><strong id="pdKpiShortageTon">0 TON</strong><small>Qty delivery tidak dapat dirilis</small></div>
+                            <div class="pd-kpi-grid">
+                                <div class="pd-kpi-card pd-success">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div><div class="pd-kpi-label">Total Delivery / Rilis</div><div class="pd-kpi-value" id="pdKpiTon">0 TON</div><div class="pd-kpi-meta">Total qty yang direncanakan</div></div>
+                                        <div class="pd-kpi-icon"><i class="ph-fill ph-truck"></i></div>
+                                    </div>
+                                </div>
+                                <div class="pd-kpi-card pd-cyan">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div><div class="pd-kpi-label">CDD</div><div class="pd-kpi-value" id="pdKpiCDD">0</div><div class="pd-kpi-meta">Unit kendaraan</div></div>
+                                        <div class="pd-kpi-icon"><i class="ph-fill ph-van"></i></div>
+                                    </div>
+                                </div>
+                                <div class="pd-kpi-card pd-purple">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div><div class="pd-kpi-label">Tronton</div><div class="pd-kpi-value" id="pdKpiTronton">0</div><div class="pd-kpi-meta">Unit kendaraan</div></div>
+                                        <div class="pd-kpi-icon"><i class="ph-fill ph-truck"></i></div>
+                                    </div>
+                                </div>
+                                <div class="pd-kpi-card pd-warning">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div><div class="pd-kpi-label">Container</div><div class="pd-kpi-value" id="pdKpiContainer">0</div><div class="pd-kpi-meta">Unit kendaraan</div></div>
+                                        <div class="pd-kpi-icon"><i class="ph-fill ph-package"></i></div>
+                                    </div>
+                                </div>
+                                <div class="pd-kpi-card pd-danger">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div><div class="pd-kpi-label">Material Shortage</div><div class="pd-kpi-value" id="pdKpiShortageTon">0 TON</div><div class="pd-kpi-meta">Qty delivery tidak dapat dirilis</div></div>
+                                        <div class="pd-kpi-icon"><i class="ph-fill ph-warning-octagon"></i></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="p-4 md:p-5 border-b border-borderMain bg-bgPrimary/30">
+                        <div class="pd-toolbar">
+                            <span class="pd-toolbar-label">Filter</span>
                             <select id="planDeliveryIncotermFilter" onchange="renderPlanDelivery(document.getElementById('planDeliverySearch')?.value || '')" class="bg-bgCard border border-borderMain text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan">
                                 <option value="ALL">Semua INCO1</option>
                             </select>
                         </div>
 
-                        <div class="overflow-auto max-h-[620px]">
-                            <table class="w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
+                        <div class="pd-table-shell overflow-auto max-h-[620px]">
+                            <table class="pd-table w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
                                 <thead class="sticky top-0 bg-[#14213d] z-10 border-b border-borderMain shadow-sm">
                                     <tr class="text-[9px] md:text-[11px] font-bold text-textSecondary uppercase tracking-wider">
                                         <th class="px-3 md:px-5 py-3">Tanggal Delivery</th>
@@ -1469,6 +1603,8 @@
         let aiSegmentChartInstance = null;
         let chartAnimInterval = null;
         let isAuthenticated = false;
+        // AI Analyst mendapatkan 1x akses gratis per browser; akses berikutnya wajib login.
+        let aiAnalystFreeUsed = localStorage.getItem('LMS_AI_ANALYST_FREE_USED') === '1';
         let pendingTargetTab = null;
 
         const SEC_U = 'YWRtaW4='; 
@@ -2375,17 +2511,17 @@
             let html='';
             groups.forEach((g,gi)=>{
                 const sourceList=Array.from(g.sourceDates).sort().join(', ');
-                const con=g.consolidated?'<span class="ml-2 text-[8px] text-statusWarning bg-statusWarning/10 border border-statusWarning/20 px-1.5 py-0.5 rounded">CONSOLIDATED</span>':'';
-                html+=`<tr class="bg-accentCyan/5 border-t-2 border-accentCyan/20">
+                const con=g.consolidated?'<span class="pd-pill pd-pill-consolidated ml-1"><i class="ph-bold ph-git-merge"></i> CONSOLIDATED</span>':'';
+                html+=`<tr class="pd-do-row">
                     <td colspan="3" class="px-3 md:px-5 py-3 align-top"><div class="flex flex-wrap items-center gap-2"><span class="text-white font-black">${fmtDate(g.dateObj)}</span><span class="text-accentPurple font-bold">${g.incoterm}</span><span class="text-white font-semibold">${g.store}</span>${con}</div>
                     ${g.consolidated?`<div class="text-[9px] text-textSecondary mt-1">Asal tanggal: ${sourceList}</div>`:''}</td>
-                    <td class="px-3 md:px-5 py-3 align-top"><div class="font-black text-accentCyan font-mono">${g.doNo}</div><div class="text-[9px] text-textSecondary mt-0.5">${g.vehicle} • kapasitas ${fmtDec(g.vehicleCapacity)} TON</div></td>
+                    <td class="px-3 md:px-5 py-3 align-top"><div class="pd-do-no">${g.doNo}</div><div class="text-[9px] text-textSecondary mt-0.5">${g.vehicle} • kapasitas ${fmtDec(g.vehicleCapacity)} TON</div></td>
                     <td class="px-3 md:px-5 py-3 align-top text-white font-bold">${g.items.length} SKU</td>
-                    <td class="px-3 md:px-5 py-3 align-top text-right text-accentCyan font-black font-mono">${fmtDec(g.doTon)}</td>
+                    <td class="px-3 md:px-5 py-3 align-top text-right"><span class="pd-qty-main">${fmtDec(g.doTon)} TON</span></td>
                     <td class="px-3 md:px-5 py-3 align-top text-right"><button onclick="printDeliveryTicket(${gi})" class="px-3 py-1.5 rounded-lg bg-white/5 border border-accentCyan/30 text-accentCyan hover:bg-accentCyan/10 text-[9px] font-bold inline-flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Cetak Tiket</button></td>
                 </tr>`;
                 g.items.sort((a,b)=>a.sku.localeCompare(b.sku)).forEach(item=>{
-                    html+=`<tr class="table-row-hover bg-bgPrimary/20"><td class="px-3 md:px-5 py-2 text-[10px] text-textSecondary">SKU</td><td class="px-3 md:px-5 py-2 text-white font-semibold" colspan="3">${item.sku}</td><td class="px-3 md:px-5 py-2 text-right text-accentCyan font-bold font-mono">${fmtDec(item.qtyTon)}</td><td class="px-3 md:px-5 py-2 text-[9px] text-textSecondary text-right">TON</td><td class="px-3 md:px-5 py-2"></td></tr>`;
+                    html+=`<tr class="table-row-hover pd-subrow"><td class="px-3 md:px-5 py-2 text-[9px] text-accentPurple font-bold uppercase">SKU</td><td class="px-3 md:px-5 py-2 text-white font-semibold" colspan="3">${item.sku}</td><td class="px-3 md:px-5 py-2 text-right"><span class="pd-qty-main">${fmtDec(item.qtyTon)} TON</span></td><td class="px-3 md:px-5 py-2 text-[9px] text-textSecondary text-right">TON</td><td class="px-3 md:px-5 py-2"></td></tr>`;
                 });
             });
             tbody.innerHTML=html;
@@ -6061,7 +6197,32 @@ ${JSON.stringify(payload)}`;
             }
         }
 
+        // Semua menu selain Stock Overview wajib login.
+        const LOCKED_TABS = [
+            'ai-analyst', 'detail', 'summary-only', 'actual-vs-so', 'plan-delivery',
+            'exec-report', 'exec-report-detail', 'offtake', 'pallet',
+            'trans-detail', 'trans-summary', 'stok-sig'
+        ];
+
+        function toggleActualVsSoMenu() {
+            if (!isAuthenticated) {
+                pendingTargetTab = 'actual-vs-so';
+                openAuthModal();
+                return;
+            }
+            const menu = document.getElementById('actualVsSoSubmenu');
+            const caret = document.getElementById('actualVsSoMenuCaret');
+            if (!menu) return;
+            const hidden = menu.classList.toggle('hidden');
+            if (caret) caret.style.transform = hidden ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
         function toggleReportMenu() {
+            if (!isAuthenticated) {
+                pendingTargetTab = 'exec-report';
+                openAuthModal();
+                return;
+            }
             const menu = document.getElementById('reportSubmenu');
             const caret = document.getElementById('reportMenuCaret');
             if (!menu) return;
@@ -6070,24 +6231,34 @@ ${JSON.stringify(payload)}`;
             if (caret) caret.style.transform = willOpen ? 'rotate(180deg)' : 'rotate(0deg)';
         }
 
-        function toggleActualVsSoMenu() {
-            const menu = document.getElementById('actualVsSoSubmenu');
-            const caret = document.getElementById('actualVsSoMenuCaret');
-            if (!menu) return;
-            const hidden = menu.classList.toggle('hidden');
-            if (caret) caret.style.transform = hidden ? 'rotate(0deg)' : 'rotate(180deg)';
-        }
-
         function handleTabClick(tabName) {
             if (window.innerWidth < 1024) {
                 toggleSidebar();
             }
 
-            const privateTabs = ['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig']; 
-            if (privateTabs.includes(tabName)) { 
-                if (isAuthenticated) switchMainTab(tabName); 
-                else { pendingTargetTab = tabName; openAuthModal(); } 
-            } else switchMainTab(tabName);
+            // Stock Overview selalu publik. AI Analyst mendapat 1x akses gratis; setelah itu wajib login.
+            if (tabName === 'ai-analyst' && !isAuthenticated) {
+                if (!aiAnalystFreeUsed) {
+                    aiAnalystFreeUsed = true;
+                    localStorage.setItem('LMS_AI_ANALYST_FREE_USED', '1');
+                    switchMainTab(tabName);
+                    showToast('Free Access', 'AI Analyst dibuka 1 kali gratis. Akses berikutnya memerlukan login.', 'info');
+                } else {
+                    pendingTargetTab = tabName;
+                    openAuthModal();
+                    showToast('Login Diperlukan', 'Kuota akses gratis AI Analyst sudah digunakan.', 'warning');
+                }
+                return;
+            }
+
+            // Semua menu privat selain Stock Overview wajib login.
+            if (LOCKED_TABS.includes(tabName)) {
+                if (isAuthenticated) switchMainTab(tabName);
+                else { pendingTargetTab = tabName; openAuthModal(); }
+                return;
+            }
+
+            switchMainTab(tabName);
         }
 
         function switchMainTab(tabName) {
@@ -6185,8 +6356,8 @@ ${JSON.stringify(payload)}`;
         function logoutSession() { 
             isAuthenticated = false; 
             updateAuthUI(); 
-            showToast('Sesi Terkunci', 'Anda telah kembali ke mode Publik.', 'info'); 
-            if (['exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'].includes(activeMainTab)) switchMainTab('stock'); 
+            showToast('Sesi Terkunci', 'Anda telah kembali ke mode Publik. Hanya Stock Overview yang dapat diakses.', 'info'); 
+            if (LOCKED_TABS.includes(activeMainTab)) switchMainTab('stock'); 
         }
         
         function updateAuthUI() { 

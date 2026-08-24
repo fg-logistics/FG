@@ -281,6 +281,23 @@
                             <span class="flex-1">Stock Summary Overview</span>
                         </button>
                     </li>
+                    <li>
+                        <button id="nav-btn-actual-vs-so" onclick="toggleActualVsSoMenu()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
+                            <i class="ph-bold ph-truck text-xl group-hover:text-accentCyan transition-colors"></i>
+                            <span class="flex-1">Delivery Requirement</span>
+                            <i id="actualVsSoMenuCaret" class="ph-bold ph-caret-down text-accentPurple transition-transform"></i>
+                        </button>
+                        <div id="actualVsSoSubmenu" class="ml-3 mt-1 pl-3 border-l border-borderMain/60 space-y-1">
+                            <button id="nav-btn-actual-vs-so" onclick="handleTabClick('actual-vs-so')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
+                                <i class="ph-bold ph-truck text-accentCyan"></i>
+                                <span class="flex-1">Actual Stok VS SO</span>
+                            </button>
+                            <button id="nav-btn-plan-delivery" onclick="handleTabClick('plan-delivery')" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left text-[11px]">
+                                <i class="ph-bold ph-calendar-check text-accentCyan"></i>
+                                <span class="flex-1">Plan Delivery</span>
+                            </button>
+                        </div>
+                    </li>
                     <!-- Report Menu (Private) -->
                     <li>
                         <button id="nav-btn-report" onclick="toggleReportMenu()" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
@@ -873,6 +890,166 @@
                     </div>
                 </div>
 
+                <!-- TAB: ACTUAL STOCK VS SO / MATERIAL SHORTAGE -->
+                <div id="view-actual-vs-so" class="hidden w-full">
+                    <div class="glass-panel rounded-2xl border border-borderMain overflow-hidden w-full">
+                        <div class="p-4 md:p-5 border-b border-borderMain bg-bgCard/90 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3">
+                            <div>
+                                <h3 class="font-black text-white text-sm md:text-base flex items-center gap-2">
+                                    <i class="ph-fill ph-git-compare text-accentCyan text-lg md:text-xl"></i> Actual Stok VS SO
+                                </h3>
+                                <p class="text-[10px] md:text-xs text-textSecondary mt-1">Material yang shortage berdasarkan perbandingan Actual FG Stock vs SO, dikelompokkan Segment → Material.</p>
+                                <p id="actualVsSoSourceInfo" class="text-[9px] text-statusWarning font-mono mt-1">Source: Actual FG Stock • Sheet SO kolom AM (Qty Ton)</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 w-full xl:w-auto">
+                                <input id="actualVsSoSearch" oninput="renderActualVsSo(this.value)" type="text" placeholder="Cari segment / material..." class="flex-1 xl:w-64 bg-bgPrimary border border-borderMain text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan">
+                                <select id="actualVsSoSegmentFilter" onchange="renderActualVsSo(document.getElementById('actualVsSoSearch')?.value || '')" class="bg-bgPrimary border border-borderMain text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan">
+                                    <option value="ALL">Semua Segment</option>
+                                </select>
+                                <select id="actualVsSoUnitFilter" onchange="renderActualVsSo(document.getElementById('actualVsSoSearch')?.value || '')" class="bg-bgPrimary border border-accentCyan/30 text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan font-bold" title="Pilih satuan Qty">
+                                    <option value="TON">Qty TON</option>
+                                    <option value="ZAK">Qty ZAK</option>
+                                </select>
+                                <button onclick="clearActualVsSoFilters()" class="justify-center px-3 py-2 bg-bgPrimary hover:bg-white/10 border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2">
+                                    <i class="ph-bold ph-x-circle"></i> Clear
+                                </button>
+                                <button onclick="loadSOData(true)" class="justify-center px-3 py-2 bg-bgPrimary hover:bg-white/10 border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2">
+                                    <i class="ph-bold ph-arrows-clockwise text-accentCyan"></i> Reload SO
+                                </button>
+                                <button onclick="exportActualVsSo()" class="justify-center px-3 py-2 bg-gradient-to-r from-accentCyan to-blue-500 text-bgPrimary font-bold rounded-xl text-[10px] flex items-center gap-2 shadow-glow-cyan">
+                                    <i class="ph-bold ph-microsoft-excel-logo"></i> Export Excel
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-5 border-b border-borderMain">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div class="ai-kpi-card"><span>Material Shortage</span><strong id="avsKpiMaterial">0</strong><small>SKU material terdampak</small></div>
+                                <div class="ai-kpi-card ai-kpi-danger"><span>Shortage TON</span><strong id="avsKpiShortage">0 TON</strong><small>SO di atas actual stock</small></div>
+                                <div class="ai-kpi-card"><span>Actual Stock</span><strong id="avsKpiActual">0 TON</strong><small>Stock tersedia</small></div>
+                                <div class="ai-kpi-card"><span>Total SO</span><strong id="avsKpiSo">0 TON</strong><small>Kebutuhan SO</small></div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-5 bg-bgPrimary/20 border-b border-borderMain">
+                            <div class="rounded-xl border border-statusWarning/20 bg-statusWarning/5 px-3 py-2 text-[9px] md:text-[10px] text-textSecondary leading-relaxed">
+                                <span class="font-bold text-statusWarning">Logika:</span> Material dikategorikan <span class="font-bold text-statusDanger">SHORTAGE</span> apabila Actual FG Stock lebih kecil dari Qty SO. Tampilan hanya menampilkan material yang shortage dan dikelompokkan secara hierarki <span class="font-bold text-white">Segment → Material</span>. Qty SO menggunakan kolom AM (Qty Ton).
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-5">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <div>
+                                    <h4 class="font-black text-white text-xs md:text-sm flex items-center gap-2"><i class="ph-fill ph-warning text-statusDanger"></i> Material Shortage by Segment</h4>
+                                    <p class="text-[9px] text-textSecondary mt-1">Segment menjadi level utama, kemudian material/SKU shortage di bawah masing-masing segment.</p>
+                                </div>
+                                <span id="avsShortageSummary" class="text-[9px] font-bold text-statusDanger"></span>
+                            </div>
+                            <div class="overflow-auto max-h-[650px]">
+                                <table class="w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
+                                    <thead class="sticky top-0 bg-[#14213d] z-10 border-b border-borderMain shadow-sm">
+                                        <tr class="text-[9px] md:text-[11px] font-bold text-textSecondary uppercase tracking-wider">
+                                            <th class="px-3 md:px-5 py-3">Segment</th>
+                                            <th class="px-3 md:px-5 py-3">Material / SKU</th>
+                                            <th id="avsShortageActualHeader" class="px-3 md:px-5 py-3 text-right">Actual Stock TON</th>
+                                            <th id="avsShortageSoHeader" class="px-3 md:px-5 py-3 text-right">SO TON</th>
+                                            <th id="avsShortageGapHeader" class="px-3 md:px-5 py-3 text-right">Material Shortage TON</th>
+                                            <th class="px-3 md:px-5 py-3 text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="actualVsSoShortageBody" class="divide-y divide-borderMain/40 font-sans"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-5 border-t border-borderMain bg-bgPrimary/10">
+                            <div class="flex items-center justify-between gap-2 mb-3">
+                                <div>
+                                    <h4 class="font-black text-white text-xs md:text-sm flex items-center gap-2"><i class="ph-fill ph-list-dashes text-accentCyan"></i> Detail All Material Actual VS SO</h4>
+                                    <p class="text-[9px] text-textSecondary mt-1">Seluruh material yang memiliki Actual Stock dan/atau SO, termasuk SHORTAGE, MATCH, EXCESS, dan NO SO.</p>
+                                </div>
+                                <span id="avsAllMaterialSummary" class="text-[9px] font-bold text-accentCyan"></span>
+                            </div>
+                            <div class="overflow-auto max-h-[700px]">
+                                <table class="w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
+                                    <thead class="sticky top-0 bg-[#14213d] z-10 border-b border-borderMain shadow-sm">
+                                        <tr class="text-[9px] md:text-[11px] font-bold text-textSecondary uppercase tracking-wider">
+                                            <th class="px-3 md:px-5 py-3">Segment</th>
+                                            <th class="px-3 md:px-5 py-3">Material / SKU</th>
+                                            <th id="avsAllActualHeader" class="px-3 md:px-5 py-3 text-right">Actual Stock TON</th>
+                                            <th id="avsAllSoHeader" class="px-3 md:px-5 py-3 text-right">SO TON</th>
+                                            <th id="avsAllGapHeader" class="px-3 md:px-5 py-3 text-right">Gap TON</th>
+                                            <th class="px-3 md:px-5 py-3 text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="actualVsSoAllMaterialBody" class="divide-y divide-borderMain/40 font-sans"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: PLAN DELIVERY -->
+                <div id="view-plan-delivery" class="hidden w-full">
+                    <div class="glass-panel rounded-2xl border border-borderMain overflow-hidden w-full">
+                        <div class="p-4 md:p-5 border-b border-borderMain bg-bgCard/90 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3">
+                            <div>
+                                <h3 class="font-black text-white text-sm md:text-base flex items-center gap-2">
+                                    <i class="ph-fill ph-calendar-check text-accentCyan text-lg md:text-xl"></i> Plan Delivery
+                                </h3>
+                                <p class="text-[10px] md:text-xs text-textSecondary mt-1">Rencana delivery dikelompokkan berdasarkan Tanggal AB → INCO1 Z → Toko P → SKU, dengan kebutuhan kendaraan otomatis dari total TON.</p>
+                                <p id="planDeliverySourceInfo" class="text-[9px] text-statusWarning font-mono mt-1">Source: Sheet SO • Tanggal AB • Qty Ton AM</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 w-full xl:w-auto">
+                                <input id="planDeliverySearch" oninput="renderPlanDelivery(this.value)" type="text" placeholder="Cari DO / Toko / SKU..." class="flex-1 xl:w-60 bg-bgPrimary border border-borderMain text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan">
+                                <input id="planDeliveryDate" onchange="renderPlanDelivery(document.getElementById('planDeliverySearch')?.value || '')" type="date" class="bg-bgPrimary border border-borderMain text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan">
+                                <button onclick="clearPlanDeliveryFilters()" class="justify-center px-3 py-2 bg-bgPrimary hover:bg-white/10 border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2">
+                                    <i class="ph-bold ph-x-circle"></i> Clear
+                                </button>
+                                <button onclick="loadSOData(true)" class="justify-center px-3 py-2 bg-bgPrimary hover:bg-white/10 border border-borderMain rounded-xl text-textSecondary hover:text-white text-[10px] font-semibold flex items-center gap-2">
+                                    <i class="ph-bold ph-arrows-clockwise text-accentCyan"></i> Reload SO
+                                </button>
+                                <button onclick="exportPlanDelivery()" class="justify-center px-3 py-2 bg-gradient-to-r from-accentCyan to-blue-500 text-bgPrimary font-bold rounded-xl text-[10px] flex items-center gap-2 shadow-glow-cyan">
+                                    <i class="ph-bold ph-microsoft-excel-logo"></i> Export Excel
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-5 border-b border-borderMain">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div class="ai-kpi-card ai-kpi-success"><span>Total Delivery / Rilis</span><strong id="pdKpiTon">0 TON</strong><small>Total Qty Delivery</small></div>
+                                <div class="ai-kpi-card"><span>CDD</span><strong id="pdKpiCDD">0</strong><small>Unit kendaraan</small></div>
+                                <div class="ai-kpi-card"><span>Tronton</span><strong id="pdKpiTronton">0</strong><small>Unit kendaraan</small></div>
+                                <div class="ai-kpi-card"><span>Container</span><strong id="pdKpiContainer">0</strong><small>Unit kendaraan</small></div>
+                                <div class="ai-kpi-card ai-kpi-danger"><span>Material Shortage</span><strong id="pdKpiShortageTon">0 TON</strong><small>Qty delivery tidak dapat dirilis</small></div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 md:p-5 border-b border-borderMain bg-bgPrimary/30">
+                            <select id="planDeliveryIncotermFilter" onchange="renderPlanDelivery(document.getElementById('planDeliverySearch')?.value || '')" class="bg-bgCard border border-borderMain text-white rounded-xl px-3 py-2 text-[10px] focus:outline-none focus:border-accentCyan">
+                                <option value="ALL">Semua INCO1</option>
+                            </select>
+                        </div>
+
+                        <div class="overflow-auto max-h-[620px]">
+                            <table class="w-full text-left border-collapse whitespace-nowrap text-xs md:text-sm">
+                                <thead class="sticky top-0 bg-[#14213d] z-10 border-b border-borderMain shadow-sm">
+                                    <tr class="text-[9px] md:text-[11px] font-bold text-textSecondary uppercase tracking-wider">
+                                        <th class="px-3 md:px-5 py-3">Tanggal Delivery</th>
+                                        <th class="px-3 md:px-5 py-3">INCO1</th>
+                                        <th class="px-3 md:px-5 py-3">Toko / Tujuan</th>
+                                        <th class="px-3 md:px-5 py-3">DO / Kendaraan</th>
+                                        <th class="px-3 md:px-5 py-3">SKU</th>
+                                        <th class="px-3 md:px-5 py-3 text-right">Qty TON</th>
+                                        <th class="px-3 md:px-5 py-3 text-right">Total DO TON</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="planDeliveryTableBody" class="divide-y divide-borderMain/40 font-sans"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- TAB 4: LAPORAN EKSEKUTIF -->
                 <div id="view-exec-report" class="hidden glass-panel rounded-2xl border border-borderMain overflow-hidden flex flex-col h-[600px] md:h-[650px] w-full">
                     <div class="p-3 md:p-5 border-b border-borderMain bg-bgCard/90 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-3 md:gap-4">
@@ -947,7 +1124,7 @@
                                 <label class="block text-[9px] md:text-[10px] font-bold text-textSecondary uppercase tracking-widest mb-1">Date</label>
                                 <input type="date" id="execDetailDateFilter" onchange="syncExecReportDateFilters('detail')" class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple transition-all cursor-pointer w-full">
                             </div>
-                            <input type="text" id="execDetailSearch" oninput="renderExecReportDetail()" placeholder="Cari SKU / Segment..." class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple w-full sm:w-48">
+                            <input type="text" id="execDetailSearch" oninput="renderExecReportDetail()" placeholder="Cari DO / Toko / SKU..." class="bg-bgCard border border-borderMain text-white rounded-md md:rounded-lg px-2 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs focus:outline-none focus:border-accentPurple w-full sm:w-48">
                             <button onclick="exportExecutiveDetailReport()" class="justify-center bg-gradient-to-r from-accentPurple to-indigo-600 hover:from-indigo-500 hover:to-accentPurple text-white font-bold px-3 md:px-5 py-1.5 md:py-2 rounded-md md:rounded-lg shadow-glow-purple transition-all flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs h-auto sm:h-[34px] whitespace-nowrap">
                                 <i class="ph-bold ph-download-simple text-sm md:text-base"></i> Download Detail
                             </button>
@@ -1247,6 +1424,7 @@
         const SHEET_NAME_UPDATE = 'DATA'; 
         const SHEET_NAME_MAKLOON = 'makloon';
         const SHEET_NAME_RILIS = 'Rilis MD';
+        const SHEET_NAME_SO = 'SO';
         
         const URL_MASTER_GVIZ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTERDATA`;
         const URL_MASTER_EXPORT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID_MASTER}`;
@@ -1256,6 +1434,8 @@
 
         const URL_MAKLOON_EXPORT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME_MAKLOON}`;
         const URL_RILIS_EXPORT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME_RILIS}`;
+        const URL_SO_GVIZ = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME_SO}`;
+        const URL_SO_EXPORT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&sheet=${SHEET_NAME_SO}`;
         
         const FALLBACK_SUMMARY_DATA = [
             { segment: 'RETAIL', sku: 'D1-R', weight: 40, qtyZak: 5555, qtyTon: 222.2 },
@@ -1264,12 +1444,17 @@
         ];
 
         let summaryData = [];
+        let planDeliveryData = [];
+        let planDeliveryPrintGroups = [];
         let execReportData = [];
         let masterDataRaw = { headers: [], rows: [] };
         let transactionRawData = { headers: [], rows: [] };
         let transactionRecords = [];
         let stokSigMakloonRaw = { headers: [], rows: [], notes: [] };
         let stokSigDetailRaw = { headers: [], rows: [] };
+        let soRawData = { headers: [], rows: [] };
+        let actualVsSoData = [];
+        let deliveryRequirementData = { dateRows: [], shortageRows: [] };
         let initialOpeningStock = 0;
         
         let lastUpdateDateStr = "-- --- ----";
@@ -1429,6 +1614,7 @@
                     try { renderStokSigMakloonTable(); } catch(e) { console.error('renderStokSigMakloonTable:', e); }
                     try { renderStokSigDetailTable(); } catch(e) { console.error('renderStokSigDetailTable:', e); }
                     try { renderStokDepletionChart(); } catch(e) { console.error('renderStokDepletionChart:', e); }
+                    try { renderActualVsSo(); } catch(e) { console.error('renderActualVsSo:', e); }
                 } catch (err) {
                     console.error('Dashboard render error:', err);
                     const msg = err && err.message ? err.message : String(err);
@@ -1475,7 +1661,18 @@
 
                     parseCSVAsync(URL_RILIS_EXPORT)
                         .then(rows => processStokSigDetailRows(rows))
-                        .catch(err => console.error('RILIS MD load failed:', err))
+                        .catch(err => console.error('RILIS MD load failed:', err)),
+
+                    loadSOData(false)
+                        .catch(err => {
+                            console.error('SO load failed:', err);
+                            actualVsSoData = [];
+                            deliveryRequirementData = { dateRows: [], shortageRows: [] };
+                            actualVsSoData = [];
+                            renderActualVsSo('');
+                            renderDeliveryRequirement();
+                            showToast('SO Warning', 'Sheet SO gagal dimuat; kebutuhan delivery belum dapat dihitung.', 'warning');
+                        })
                 ]);
 
                 // Re-render once transaction/support data is available.
@@ -1863,6 +2060,963 @@
             }
         }
 
+
+        function normalizeHeaderName(v) {
+            return String(v ?? '').toLowerCase().replace(/[\r\n]+/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+        }
+
+        function findHeaderIndex(headers, patterns) {
+            const normalized = headers.map(normalizeHeaderName);
+            const pats = patterns.map(normalizeHeaderName);
+            for (let i = 0; i < normalized.length; i++) {
+                const h = normalized[i];
+                if (pats.some(p => h === p || h.includes(p))) return i;
+            }
+            return -1;
+        }
+
+        const SO_PLAN_DATE_COL = 27; // Column AB / Tanggal Delivery
+        const SO_QTY_TON_COL_FIXED = 38; // Column AM / Qty Ton
+
+        function parsePlanDeliveryDate(value) {
+            if (value === null || value === undefined || String(value).trim() === '') return null;
+            const s = String(value).trim();
+            let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+            m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+            if (m) return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]));
+            const d = new Date(s);
+            return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        function dateKeyLocal(d) {
+            if (!d || Number.isNaN(d.getTime())) return '';
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        const SO_INCO_COL = 25; // Column Z / INCO1
+        const SO_STORE_COL = 15; // Column P / Toko
+
+        function normalizePlanText(v, fallback='-') {
+            const t = String(v ?? '').trim();
+            return t || fallback;
+        }
+
+        function getVehiclePlan(totalTon) {
+            const t = Math.max(0, cleanNum(totalTon));
+            if (t <= 0) return { vehicle: '-', capacity: 0, vehicleCount: 0 };
+            if (t <= 24) return { vehicle: 'CDD', capacity: 8, vehicleCount: Math.ceil(t / 8 - 1e-9) };
+            if (t <= 26) return { vehicle: 'Container', capacity: 26, vehicleCount: 1 };
+            return { vehicle: 'Tronton', capacity: 32, vehicleCount: Math.ceil(t / 32 - 1e-9) };
+        }
+
+        function allocatePlanDeliveryDO(rows) {
+            // Consolidation rule:
+            // - Group by INCO1 + Toko/Tujuan.
+            // - For each date, a residual < 8 TON is carried to the next
+            //   available date for the same Toko/Tujuan.
+            // - Residuals are combined with the next date's quantity first.
+            // - A DO is assigned to the later date where the consolidated load is completed.
+            // - Source-date metadata is retained so the movement remains traceable.
+            const storeGroups = {};
+            rows.forEach(r => {
+                const groupKey = `${r.incoterm.toUpperCase()}|${r.store.toUpperCase()}`;
+                if (!storeGroups[groupKey]) storeGroups[groupKey] = [];
+                storeGroups[groupKey].push({
+                    ...r,
+                    items: [{ sku: r.sku, qtyTon: r.qtyTon, sourceDateKey: r.dateKey, sourceDateObj: r.dateObj }]
+                });
+            });
+
+            const output = [];
+            // DO NUMBER HARUS UNIK SECARA GLOBAL, TIDAK RESET UNTUK SETIAP TOKO/INCO1.
+            let globalDoCounter = 0;
+            const nextDoNo = () => `DO-${String(++globalDoCounter).padStart(4, '0')}`;
+
+            const addLoads = (targetItems, targetDate, incoterm, store, totalTon) => {
+                const plan = getVehiclePlan(totalTon);
+                if (plan.vehicleCount <= 0 || plan.capacity <= 0) return;
+
+                const doRows = Array.from({ length: plan.vehicleCount }, (_, i) => ({
+                    doNo: nextDoNo(),
+                    usedTon: 0,
+                    items: []
+                }));
+
+                const used = doRows.map(() => 0);
+                const expandedItems = [];
+                targetItems.forEach(item => {
+                    let remaining = cleanNum(item.qtyTon);
+                    while (remaining > 0.0001) {
+                        expandedItems.push({
+                            sku: item.sku,
+                            qtyTon: remaining,
+                            sourceDateKey: item.sourceDateKey,
+                            sourceDateObj: item.sourceDateObj
+                        });
+                        break;
+                    }
+                });
+
+                expandedItems.forEach(item => {
+                    let remaining = item.qtyTon;
+                    while (remaining > 0.0001) {
+                        let idx = used.findIndex(v => v < plan.capacity - 0.0001);
+                        if (idx < 0) {
+                            idx = used.length;
+                            used.push(0);
+                            doRows.push({ doNo: nextDoNo(), usedTon: 0, items: [] });
+                        }
+                        const free = Math.max(0, plan.capacity - used[idx]);
+                        const part = Math.min(remaining, free);
+                        if (part <= 0.0001) break;
+                        used[idx] += part;
+                        doRows[idx].usedTon += part;
+                        doRows[idx].items.push({
+                            sku: item.sku,
+                            qtyTon: part,
+                            sourceDateKey: item.sourceDateKey,
+                            sourceDateObj: item.sourceDateObj
+                        });
+                        remaining -= part;
+                    }
+                });
+
+                const totalConsolidated = targetItems.reduce((sum, x) => sum + cleanNum(x.qtyTon), 0);
+                doRows.forEach((d, idx) => {
+                    d.items.forEach(item => output.push({
+                        dateKey: dateKeyLocal(targetDate),
+                        dateObj: targetDate,
+                        sourceDateKey: item.sourceDateKey,
+                        sourceDateObj: item.sourceDateObj,
+                        incoterm,
+                        store,
+                        doNo: d.doNo,
+                        vehicle: plan.vehicle,
+                        vehicleCapacity: plan.capacity,
+                        vehicleCount: plan.vehicleCount,
+                        doIndex: idx + 1,
+                        totalTon: totalConsolidated,
+                        doTon: d.usedTon,
+                        sku: item.sku,
+                        qtyTon: item.qtyTon,
+                        consolidated: item.sourceDateKey !== dateKeyLocal(targetDate)
+                    }));
+                });
+            };
+
+            Object.values(storeGroups).forEach(group => {
+                group.sort((a, b) => a.dateObj - b.dateObj || a.sku.localeCompare(b.sku));
+                const byDate = {};
+                group.forEach(r => {
+                    if (!byDate[r.dateKey]) byDate[r.dateKey] = { dateKey: r.dateKey, dateObj: r.dateObj, incoterm: r.incoterm, store: r.store, items: [] };
+                    byDate[r.dateKey].items.push(...r.items);
+                });
+
+                const dates = Object.values(byDate).sort((a, b) => a.dateObj - b.dateObj);
+                let carryItems = [];
+                let carryTon = 0;
+
+                dates.forEach((day, dayIndex) => {
+                    const currentItems = [...day.items];
+                    const currentTon = currentItems.reduce((sum, x) => sum + cleanNum(x.qtyTon), 0);
+                    const combinedItems = [...carryItems, ...currentItems];
+                    const combinedTon = carryTon + currentTon;
+
+                    // For <= 24 TON, keep complete 8-TON CDD loads on this date.
+                    // Residual < 8 TON is carried to the next date for the same store.
+                    if (combinedTon <= 24 + 1e-9) {
+                        const cddLoads = Math.floor((combinedTon + 1e-9) / 8);
+                        const allocTon = cddLoads * 8;
+
+                        if (allocTon > 0) {
+                            const loadItems = [];
+                            let remainToAllocate = allocTon;
+                            for (const item of combinedItems) {
+                                if (remainToAllocate <= 0.0001) break;
+                                const part = Math.min(cleanNum(item.qtyTon), remainToAllocate);
+                                if (part > 0.0001) loadItems.push({ ...item, qtyTon: part });
+                                remainToAllocate -= part;
+                            }
+                            addLoads(loadItems, day.dateObj, day.incoterm, day.store, allocTon);
+                        }
+
+                        // Whatever remains is carried forward to a later date.
+                        const allocatedByItem = new Map();
+                        let remainAllocated = allocTon;
+                        for (const item of combinedItems) {
+                            if (remainAllocated <= 0.0001) break;
+                            const part = Math.min(cleanNum(item.qtyTon), remainAllocated);
+                            allocatedByItem.set(item, part);
+                            remainAllocated -= part;
+                        }
+                        carryItems = [];
+                        let newCarryTon = 0;
+                        combinedItems.forEach(item => {
+                            const usedPart = allocatedByItem.get(item) || 0;
+                            const left = cleanNum(item.qtyTon) - usedPart;
+                            if (left > 0.0001) {
+                                carryItems.push({ ...item, qtyTon: left });
+                                newCarryTon += left;
+                            }
+                        });
+                        carryTon = newCarryTon;
+                    } else {
+                        // 25-26 TON => Container; >26 TON => Tronton.
+                        // If a carry exists and pushes the current date above 24 TON,
+                        // consolidate it into the current date rather than making a small DO.
+                        addLoads(combinedItems, day.dateObj, day.incoterm, day.store, combinedTon);
+                        carryItems = [];
+                        carryTon = 0;
+                    }
+
+                    // On the last date, do not leave a residual stranded: keep it visible as
+                    // a partial CDD because there is no later date available for consolidation.
+                    if (dayIndex === dates.length - 1 && carryTon > 0.0001) {
+                        addLoads(carryItems, day.dateObj, day.incoterm, day.store, carryTon);
+                        carryItems = [];
+                        carryTon = 0;
+                    }
+                });
+            });
+
+            return output.sort((a, b) =>
+                a.dateObj - b.dateObj ||
+                a.incoterm.localeCompare(b.incoterm) ||
+                a.store.localeCompare(b.store) ||
+                a.doIndex - b.doIndex ||
+                a.sku.localeCompare(b.sku)
+            );
+        }
+
+        function buildPlanDeliveryData() {
+            const skuIdx = (() => {
+                const byHeader = findHeaderIndex(soRawData.headers || [], ['sku','sku code','material code','material','product code','kode sku','kode material','produk']);
+                if (byHeader >= 0) return byHeader;
+                const byPattern = (soRawData.headers || []).findIndex(h => /sku|material|product|kode|code/i.test(h));
+                return byPattern >= 0 ? byPattern : 0;
+            })();
+            const groupedRows = {};
+            (soRawData.rows || []).forEach(r => {
+                const sku = normalizePlanText(r[skuIdx], 'UNKNOWN SKU');
+                const d = parsePlanDeliveryDate(r[SO_PLAN_DATE_COL]);
+                if (!d) return;
+                const qtyTon = cleanNum(r[SO_QTY_TON_COL_FIXED]);
+                if (!Number.isFinite(qtyTon) || qtyTon <= 0) return;
+                const incoterm = normalizePlanText(r[SO_INCO_COL], 'NO INCO');
+                const store = normalizePlanText(r[SO_STORE_COL], 'NO TOKO');
+                const key = `${dateKeyLocal(d)}|${incoterm.toUpperCase()}|${store.toUpperCase()}|${sku.toUpperCase()}`;
+                if (!groupedRows[key]) groupedRows[key] = { dateKey: dateKeyLocal(d), dateObj: d, incoterm, store, sku, qtyTon: 0 };
+                groupedRows[key].qtyTon += qtyTon;
+            });
+
+            planDeliveryData = allocatePlanDeliveryDO(Object.values(groupedRows));
+            const info = document.getElementById('planDeliverySourceInfo');
+            if (info) info.textContent = `Source: Sheet SO • Tanggal AB • INCO1 Z • Toko P • Qty Ton AM • ${soRawData.rows.length} baris SO • ${planDeliveryData.length} detail DO`;
+            const incoSelect = document.getElementById('planDeliveryIncotermFilter');
+            if (incoSelect) {
+                const current = incoSelect.value || 'ALL';
+                const incos = [...new Set(planDeliveryData.map(x => x.incoterm).filter(Boolean))].sort();
+                incoSelect.innerHTML = `<option value="ALL">Semua INCO1</option>` + incos.map(v => `<option value="${v}">${v}</option>`).join('');
+                incoSelect.value = incos.includes(current) ? current : 'ALL';
+            }
+            renderPlanDelivery(document.getElementById('planDeliverySearch')?.value || '');
+        }
+
+        function renderPlanDelivery(search = '') {
+            const tbody = document.getElementById('planDeliveryTableBody');
+            if (!tbody) return;
+            const q = String(search || '').trim().toLowerCase();
+            const dateFilter = document.getElementById('planDeliveryDate')?.value || '';
+            const incotermFilter = document.getElementById('planDeliveryIncotermFilter')?.value || 'ALL';
+            const rows = (planDeliveryData || []).filter(r => {
+                if (dateFilter && r.dateKey !== dateFilter) return false;
+                if (incotermFilter !== 'ALL' && r.incoterm !== incotermFilter) return false;
+                if (q && !([r.doNo, r.incoterm, r.store, r.sku, r.vehicle, r.dateKey].join(' ').toLowerCase().includes(q))) return false;
+                return true;
+            });
+
+            const groupMap = new Map();
+            rows.forEach(r => {
+                const key = [r.dateKey, r.incoterm, r.store, r.doNo].join('|');
+                if (!groupMap.has(key)) {
+                    groupMap.set(key, { key, dateKey:r.dateKey, dateObj:r.dateObj, incoterm:r.incoterm, store:r.store,
+                        doNo:r.doNo, vehicle:r.vehicle, vehicleCapacity:r.vehicleCapacity, doTon:0,
+                        consolidated:false, sourceDates:new Set(), items:[] });
+                }
+                const g=groupMap.get(key);
+                g.doTon += cleanNum(r.qtyTon);
+                g.consolidated = g.consolidated || !!r.consolidated;
+                if (r.sourceDateKey) g.sourceDates.add(r.sourceDateKey);
+                g.items.push(r);
+            });
+
+            const groups=Array.from(groupMap.values()).sort((a,b)=>a.dateObj-b.dateObj||a.incoterm.localeCompare(b.incoterm)||a.store.localeCompare(b.store)||a.doNo.localeCompare(b.doNo));
+            planDeliveryPrintGroups=groups;
+
+            const totalTon=groups.reduce((s,g)=>s+g.doTon,0);
+            const skuCount=new Set(rows.map(r=>r.sku.toUpperCase())).size;
+            const dateCount=new Set(rows.map(r=>r.dateKey)).size;
+            const cddCount=groups.filter(g=>g.vehicle==='CDD').length;
+            const trontonCount=groups.filter(g=>g.vehicle==='Tronton').length;
+            const containerCount=groups.filter(g=>g.vehicle==='Container').length;
+            const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+            setTxt('pdKpiTon',`${fmtDec(totalTon)} TON`);
+            setTxt('pdKpiCDD',cddCount.toLocaleString('id-ID'));
+            setTxt('pdKpiTronton',trontonCount.toLocaleString('id-ID'));
+            setTxt('pdKpiContainer',containerCount.toLocaleString('id-ID'));
+            const pdShortageTon = (deliveryRequirementData?.shortageRows || [])
+                .filter(r => r.shortageTon > 0.01)
+                .reduce((s,r) => s + cleanNum(r.shortageTon), 0);
+            setTxt('pdKpiShortageTon',`${fmtDec(pdShortageTon)} TON`);
+
+            if(!groups.length){tbody.innerHTML='<tr><td colspan="7" class="px-5 py-10 text-center text-textSecondary text-[11px]">Tidak ada Plan Delivery sesuai filter.</td></tr>';return;}
+            const fmtDate=d=>d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+            let html='';
+            groups.forEach((g,gi)=>{
+                const sourceList=Array.from(g.sourceDates).sort().join(', ');
+                const con=g.consolidated?'<span class="ml-2 text-[8px] text-statusWarning bg-statusWarning/10 border border-statusWarning/20 px-1.5 py-0.5 rounded">CONSOLIDATED</span>':'';
+                html+=`<tr class="bg-accentCyan/5 border-t-2 border-accentCyan/20">
+                    <td colspan="3" class="px-3 md:px-5 py-3 align-top"><div class="flex flex-wrap items-center gap-2"><span class="text-white font-black">${fmtDate(g.dateObj)}</span><span class="text-accentPurple font-bold">${g.incoterm}</span><span class="text-white font-semibold">${g.store}</span>${con}</div>
+                    ${g.consolidated?`<div class="text-[9px] text-textSecondary mt-1">Asal tanggal: ${sourceList}</div>`:''}</td>
+                    <td class="px-3 md:px-5 py-3 align-top"><div class="font-black text-accentCyan font-mono">${g.doNo}</div><div class="text-[9px] text-textSecondary mt-0.5">${g.vehicle} • kapasitas ${fmtDec(g.vehicleCapacity)} TON</div></td>
+                    <td class="px-3 md:px-5 py-3 align-top text-white font-bold">${g.items.length} SKU</td>
+                    <td class="px-3 md:px-5 py-3 align-top text-right text-accentCyan font-black font-mono">${fmtDec(g.doTon)}</td>
+                    <td class="px-3 md:px-5 py-3 align-top text-right"><button onclick="printDeliveryTicket(${gi})" class="px-3 py-1.5 rounded-lg bg-white/5 border border-accentCyan/30 text-accentCyan hover:bg-accentCyan/10 text-[9px] font-bold inline-flex items-center gap-1.5"><i class="ph-bold ph-printer"></i> Cetak Tiket</button></td>
+                </tr>`;
+                g.items.sort((a,b)=>a.sku.localeCompare(b.sku)).forEach(item=>{
+                    html+=`<tr class="table-row-hover bg-bgPrimary/20"><td class="px-3 md:px-5 py-2 text-[10px] text-textSecondary">SKU</td><td class="px-3 md:px-5 py-2 text-white font-semibold" colspan="3">${item.sku}</td><td class="px-3 md:px-5 py-2 text-right text-accentCyan font-bold font-mono">${fmtDec(item.qtyTon)}</td><td class="px-3 md:px-5 py-2 text-[9px] text-textSecondary text-right">TON</td><td class="px-3 md:px-5 py-2"></td></tr>`;
+                });
+            });
+            tbody.innerHTML=html;
+        }
+
+        function printDeliveryTicket(groupIndex) {
+            const g=planDeliveryPrintGroups?.[groupIndex];
+            if(!g){showToast('Tiket','DO tidak ditemukan.','error');return;}
+            const esc=v=>String(v??'').replace(/[&<>\'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+            const fmtDate=d=>d.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+            const items=[...g.items].sort((a,b)=>a.sku.localeCompare(b.sku));
+            const sourceDates=Array.from(g.sourceDates).sort();
+            const rowsHtml=items.map((item,i)=>`<tr><td style="padding:8px;border-bottom:1px solid #ddd;text-align:center">${i+1}</td><td style="padding:8px;border-bottom:1px solid #ddd">${esc(item.sku)}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${fmtDec(item.qtyTon)}</td><td style="padding:8px;border-bottom:1px solid #ddd">TON</td></tr>`).join('');
+            const ticket=`<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Tiket Picking ${esc(g.doNo)}</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;padding:24px;background:#fff}.ticket{max-width:820px;margin:0 auto;border:2px solid #111;padding:24px}.head{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #111;padding-bottom:16px;margin-bottom:16px}.title{font-size:22px;font-weight:800}.subtitle{font-size:11px;color:#555;margin-top:4px}.do{font-size:20px;font-weight:800}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:18px}.meta div{border-bottom:1px solid #ddd;padding:6px 0}.label{font-size:10px;color:#666;text-transform:uppercase}.value{font-weight:700;margin-top:2px}.notice{padding:10px;border:1px dashed #777;margin-bottom:18px;font-weight:700}.total{margin-top:14px;display:flex;justify-content:flex-end;font-size:15px;font-weight:800}.note{margin-top:22px;border-top:1px solid #111;padding-top:14px;font-size:11px;line-height:1.6}.sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px}.sign div{border-top:1px solid #111;padding-top:6px;text-align:center;font-size:10px}.print-btn{position:fixed;right:20px;top:20px;padding:10px 14px;background:#111;color:#fff;border:0;border-radius:6px;font-weight:700;cursor:pointer}@media print{body{padding:0}.ticket{border:0;max-width:none;padding:0}.print-btn{display:none}}</style></head><body><button class="print-btn" onclick="window.print()">PRINT</button><div class="ticket"><div class="head"><div><div class="title">WAREHOUSE PICKING TICKET</div><div class="subtitle">Tiket pengambilan produk ke gudang</div></div><div style="text-align:right"><div class="do">${esc(g.doNo)}</div><div class="subtitle">${esc(g.vehicle)}</div></div></div><div class="meta"><div><div class="label">Tanggal Delivery</div><div class="value">${esc(fmtDate(g.dateObj))}</div></div><div><div class="label">INCO1</div><div class="value">${esc(g.incoterm)}</div></div><div><div class="label">Toko / Tujuan</div><div class="value">${esc(g.store)}</div></div><div><div class="label">Kendaraan / Kapasitas</div><div class="value">${esc(g.vehicle)} / ${fmtDec(g.vehicleCapacity)} TON</div></div></div>${g.consolidated?`<div class="notice">CONSOLIDATED DELIVERY — sumber tanggal: ${sourceDates.map(esc).join(', ')}</div>`:''}<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="padding:9px;background:#111;color:#fff;text-align:center;width:40px">No.</th><th style="padding:9px;background:#111;color:#fff;text-align:left">SKU</th><th style="padding:9px;background:#111;color:#fff;text-align:right;width:120px">Qty</th><th style="padding:9px;background:#111;color:#fff;text-align:left;width:70px">Satuan</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="total">TOTAL DO: ${fmtDec(g.doTon)} TON</div><div class="note"><b>Instruksi Gudang:</b> Siapkan produk sesuai SKU dan Qty pada tiket ini. Verifikasi SKU, jumlah, kondisi kemasan, dan lokasi sebelum serah terima.</div><div class="sign"><div>Petugas Gudang</div><div>Driver / Pengambil</div></div></div></body></html>`;
+            const win=window.open('','_blank','width=900,height=1000');
+            if(!win){showToast('Tiket','Popup diblokir browser. Izinkan popup untuk mencetak tiket.','error');return;}
+            win.document.open();win.document.write(ticket);win.document.close();win.focus();
+            setTimeout(()=>{try{win.print();}catch(e){}},300);
+        }
+
+        function clearPlanDeliveryFilters() {
+            const s = document.getElementById('planDeliverySearch');
+            const d = document.getElementById('planDeliveryDate');
+            const f = document.getElementById('planDeliveryIncotermFilter');
+            if (s) s.value = ''; if (d) d.value = ''; if (f) f.value = 'ALL';
+            renderPlanDelivery('');
+        }
+
+        async function exportPlanDelivery() {
+            const btn = document.querySelector('button[onclick="exportPlanDelivery()"]');
+            const original = btn ? btn.innerHTML : '';
+            try {
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Export...'; }
+
+                const q = String(document.getElementById('planDeliverySearch')?.value || '').trim().toLowerCase();
+                const dateFilter = document.getElementById('planDeliveryDate')?.value || '';
+                const incotermFilter = document.getElementById('planDeliveryIncotermFilter')?.value || 'ALL';
+                const rows = (planDeliveryData || []).filter(r => {
+                    if (dateFilter && r.dateKey !== dateFilter) return false;
+                    if (incotermFilter !== 'ALL' && r.incoterm !== incotermFilter) return false;
+                    if (q && !([r.doNo, r.incoterm, r.store, r.sku, r.vehicle, r.dateKey].join(' ').toLowerCase().includes(q))) return false;
+                    return true;
+                }).map(r => ({
+                    'Tanggal Delivery': r.dateKey,
+                    'INCO1': r.incoterm,
+                    'Toko / Tujuan': r.store,
+                    'DO': r.doNo,
+                    'Kendaraan': r.vehicle,
+                    'Kapasitas Kendaraan TON': r.vehicleCapacity,
+                    'SKU': r.sku,
+                    'Qty TON': r.qtyTon,
+                    'Total DO TON': r.doTon,
+                    'Total Toko/INCO TON': r.totalTon,
+                    'Sumber Tanggal': r.sourceDateKey,
+                    'Consolidated': r.consolidated ? 'YES' : 'NO'
+                }));
+
+                if (!rows.length) {
+                    showToast('Export', 'Tidak ada data Plan Delivery sesuai filter.', 'warning');
+                    return;
+                }
+
+                // Pastikan library XLSX tersedia. Jika CDN belum termuat, coba load ulang.
+                if (typeof XLSX === 'undefined') {
+                    await new Promise((resolve) => {
+                        const existing = document.querySelector('script[data-xlsx-retry="1"]');
+                        if (existing) { resolve(); return; }
+                        const script = document.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+                        script.async = true;
+                        script.dataset.xlsxRetry = '1';
+                        script.onload = resolve;
+                        script.onerror = resolve;
+                        document.head.appendChild(script);
+                    });
+                }
+
+                if (typeof XLSX !== 'undefined') {
+                    const wb = XLSX.utils.book_new();
+                    const ws = XLSX.utils.json_to_sheet(rows);
+                    ws['!cols'] = [
+                        {wch:16},{wch:10},{wch:24},{wch:14},{wch:14},{wch:22},
+                        {wch:42},{wch:14},{wch:16},{wch:22},{wch:16},{wch:14}
+                    ];
+                    XLSX.utils.book_append_sheet(wb, ws, 'Plan Delivery');
+                    XLSX.writeFile(wb, `Plan_Delivery_DO_${new Date().toISOString().slice(0,10)}.xlsx`);
+                    showToast('Export Berhasil', `${rows.length.toLocaleString('id-ID')} baris Plan Delivery berhasil diunduh sebagai Excel.`, 'success');
+                } else {
+                    // Fallback: tetap bisa diunduh walaupun library Excel gagal dimuat.
+                    const headers = Object.keys(rows[0]);
+                    const csvCell = v => {
+                        const x = String(v ?? '');
+                        return /[";,\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x;
+                    };
+                    const csv = '\uFEFF' + [headers, ...rows.map(r => headers.map(h => r[h]))]
+                        .map(row => row.map(csvCell).join(';')).join('\r\n');
+                    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Plan_Delivery_DO_${new Date().toISOString().slice(0,10)}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    showToast('Export Berhasil', `${rows.length.toLocaleString('id-ID')} baris diunduh sebagai CSV karena library Excel tidak tersedia.`, 'success');
+                }
+            } catch (err) {
+                console.error('Plan Delivery Export Error:', err);
+                showToast('Export Error', 'Gagal mengunduh Plan Delivery. Coba Reload halaman lalu export kembali.', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = original; }
+            }
+        }
+
+        function processSOData(matrix) {
+            if (!Array.isArray(matrix) || matrix.length < 2) throw new Error('Sheet SO kosong');
+            let headerIdx = -1, bestScore = -1;
+            const headerHints = ['sku','material','product','produk','code','kode','qty','quantity','order','sales order','so'];
+            for (let i = 0; i < Math.min(matrix.length, 20); i++) {
+                const row = matrix[i] || [];
+                const filled = row.filter(x => String(x ?? '').trim() !== '').length;
+                if (!filled) continue;
+                let score = filled;
+                row.forEach(c => {
+                    const h = normalizeHeaderName(c);
+                    headerHints.forEach(k => { if (h.includes(normalizeHeaderName(k))) score += 8; });
+                });
+                if (score > bestScore) { bestScore = score; headerIdx = i; }
+            }
+            if (headerIdx < 0) headerIdx = 0;
+            const headers = (matrix[headerIdx] || []).map(x => String(x ?? '').trim());
+            soRawData.headers = headers;
+            soRawData.rows = matrix.slice(headerIdx + 1).filter(r => Array.isArray(r) && r.some(x => String(x ?? '').trim() !== ''));
+
+            // SO SOURCE RULE: Qty SO wajib diambil langsung dari kolom AM (Qty Ton).
+            // AM = kolom ke-39 pada spreadsheet => zero-based index 38.
+            const SKU_COL_FALLBACK = 0;
+            const SO_QTY_TON_COL = SO_QTY_TON_COL_FIXED; // Column AM / Qty Ton
+            const skuIdx = findHeaderIndex(headers, ['sku','sku code','material code','material','product code','kode sku','kode material','produk']);
+            const segmentIdx = findHeaderIndex(headers, ['segment','sales segment','channel']);
+
+            // Cari SKU berdasarkan header. Bila header tidak terbaca, gunakan kolom A sebagai fallback.
+            let resolvedSkuIdx = skuIdx;
+            if (resolvedSkuIdx < 0) {
+                resolvedSkuIdx = headers.findIndex(h => /sku|material|product|kode|code/i.test(h));
+            }
+            if (resolvedSkuIdx < 0) resolvedSkuIdx = SKU_COL_FALLBACK;
+
+            const soMap = {};
+            soRawData.rows.forEach(r => {
+                const sku = String(r[resolvedSkuIdx] ?? '').trim();
+                if (!sku) return;
+                const key = sku.toUpperCase();
+                const masterRows = (summaryData || []).filter(x => String(x.sku).trim().toUpperCase() === key);
+                const master = masterRows[0] || null;
+                let segment = segmentIdx >= 0 ? String(r[segmentIdx] ?? '').trim().toUpperCase() : '';
+                if (!segment) segment = master ? String(master.segment || 'GENERAL').toUpperCase() : 'GENERAL';
+
+                // HANYA baca Qty Ton dari kolom AM. Tidak memakai Qty ZAK / Weight untuk SO.
+                const soTon = cleanNum(r[SO_QTY_TON_COL]);
+                if (!soMap[key]) soMap[key] = { sku, segment, qtyTon: 0 };
+                soMap[key].qtyTon += soTon;
+            });
+
+            // Actual = data yang menjadi dasar tabel Finished Goods Stock Summary Report.
+            const actualMap = {};
+            (summaryData || []).forEach(x => {
+                const key = String(x.sku || '').trim().toUpperCase();
+                if (!key) return;
+                if (!actualMap[key]) actualMap[key] = { sku: x.sku, segment: x.segment || 'GENERAL', actualTon: 0, weightKg: cleanNum(x.weight) };
+                actualMap[key].actualTon += cleanNum(x.qtyTon);
+                if (cleanNum(actualMap[key].weightKg) <= 0 && cleanNum(x.weight) > 0) actualMap[key].weightKg = cleanNum(x.weight);
+            });
+
+            const keys = new Set([...Object.keys(actualMap), ...Object.keys(soMap)]);
+            actualVsSoData = Array.from(keys).map(key => {
+                const a = actualMap[key] || {};
+                const so = soMap[key] || {};
+                const actualTon = cleanNum(a.actualTon);
+                const soTon = cleanNum(so.qtyTon);
+                const gapTon = actualTon - soTon;
+                let status = 'MATCH';
+                if (!soMap[key] || soTon === 0) status = 'NO_SO';
+                else if (gapTon > 0.01) status = 'EXCESS';
+                else if (gapTon < -0.01) status = 'SHORTAGE';
+                return { sku: a.sku || so.sku || key, segment: a.segment || so.segment || 'GENERAL', actualTon, soTon, gapTon, weightKg: cleanNum(a.weightKg || 0), status };
+            }).sort((x,y) => Math.abs(y.gapTon) - Math.abs(x.gapTon));
+
+            const source = `Actual: Finished Goods Stock Summary Report • SO: Sheet SO kolom AM (Qty Ton) • Material Shortage: Actual < SO`;
+            const info = document.getElementById('actualVsSoSourceInfo');
+            if (info) info.textContent = `${source} • ${soRawData.rows.length} baris`;
+            buildPlanDeliveryData();
+            buildDeliveryRequirementData();
+            renderActualVsSo(document.getElementById('actualVsSoSearch')?.value || '');
+        }
+
+        async function loadSOData(showMessage = false) {
+            const parseSO = (url) => new Promise((resolve, reject) => Papa.parse(url, { download: true, header: false, skipEmptyLines: true, complete: r => resolve(r.data), error: reject }));
+            let matrix;
+            try { matrix = await parseSO(URL_SO_GVIZ); if (!matrix || matrix.length < 2) throw new Error('Empty GVIZ'); }
+            catch (e) { matrix = await parseSO(URL_SO_EXPORT); }
+            processSOData(matrix);
+            if (showMessage) showToast('SO Loaded', 'Data sheet SO berhasil dimuat dan dibandingkan dengan actual stock.', 'success');
+            return matrix;
+        }
+
+        function buildDeliveryRequirementData() {
+            const actualMap = {};
+            (summaryData || []).forEach(x => {
+                const sku = String(x.sku || '').trim();
+                if (!sku || sku === '-') return;
+                const key = sku.toUpperCase();
+                if (!actualMap[key]) actualMap[key] = { sku, ton: 0 };
+                actualMap[key].ton += cleanNum(x.qtyTon);
+            });
+
+            // Aggregate delivery requirement by date + SKU from the already
+            // allocated Plan Delivery result, so vehicle and SKU logic stay consistent.
+            const demandMap = {};
+            (planDeliveryData || []).forEach(r => {
+                const dateKey = r.dateKey;
+                const sku = String(r.sku || '').trim();
+                const qtyTon = cleanNum(r.qtyTon);
+                if (!dateKey || !sku || qtyTon <= 0) return;
+                const key = `${dateKey}|${sku.toUpperCase()}`;
+                if (!demandMap[key]) {
+                    demandMap[key] = {
+                        dateKey,
+                        dateObj: r.dateObj,
+                        sku,
+                        qtyTon: 0,
+                        vehicles: new Set()
+                    };
+                }
+                demandMap[key].qtyTon += qtyTon;
+                if (r.vehicle) demandMap[key].vehicles.add(r.vehicle);
+            });
+
+            const bySku = {};
+            Object.values(demandMap).forEach(r => {
+                const key = r.sku.toUpperCase();
+                if (!bySku[key]) bySku[key] = [];
+                bySku[key].push(r);
+            });
+
+            const shortageRows = [];
+            Object.keys(bySku).forEach(key => {
+                const rows = bySku[key].sort((a,b) => a.dateObj - b.dateObj);
+                let projectedStock = cleanNum(actualMap[key]?.ton || 0);
+
+                rows.forEach(r => {
+                    const stockBefore = projectedStock;
+                    const shortageTon = Math.max(0, r.qtyTon - stockBefore);
+                    projectedStock = Math.max(0, stockBefore - r.qtyTon);
+                    shortageRows.push({
+                        ...r,
+                        stockBefore,
+                        shortageTon,
+                        projectedStock,
+                        status: shortageTon > 0.01 ? 'TIDAK BISA KIRIM' : 'BISA KIRIM'
+                    });
+                });
+            });
+
+            // Vehicle demand per date is counted by unique DO, not by SKU rows.
+            const doMap = {};
+            (planDeliveryData || []).forEach(r => {
+                if (!r.dateKey || !r.doNo) return;
+                const key = `${r.dateKey}|${r.doNo}`;
+                if (!doMap[key]) {
+                    doMap[key] = {
+                        dateKey: r.dateKey,
+                        dateObj: r.dateObj,
+                        doNo: r.doNo,
+                        vehicle: r.vehicle,
+                        doTon: 0
+                    };
+                }
+                doMap[key].doTon = Math.max(doMap[key].doTon, cleanNum(r.doTon));
+            });
+
+            const dateMap = {};
+            Object.values(demandMap).forEach(r => {
+                if (!dateMap[r.dateKey]) {
+                    dateMap[r.dateKey] = {
+                        dateKey: r.dateKey,
+                        dateObj: r.dateObj,
+                        totalTon: 0,
+                        skuSet: new Set()
+                    };
+                }
+                dateMap[r.dateKey].totalTon += r.qtyTon;
+                dateMap[r.dateKey].skuSet.add(r.sku.toUpperCase());
+            });
+            Object.values(shortageRows).forEach(r => {
+                if (!dateMap[r.dateKey]) {
+                    dateMap[r.dateKey] = {
+                        dateKey: r.dateKey,
+                        dateObj: r.dateObj,
+                        totalTon: 0,
+                        skuSet: new Set()
+                    };
+                }
+                dateMap[r.dateKey].shortageTon += r.shortageTon;
+            });
+
+            Object.values(dateMap).forEach(d => {
+                d.cdd = 0; d.tronton = 0; d.container = 0; d.shortageTon = 0;
+            });
+            Object.values(doMap).forEach(d => {
+                const target = dateMap[d.dateKey];
+                if (!target) return;
+                if (d.vehicle === 'CDD') target.cdd += 1;
+                else if (d.vehicle === 'Tronton') target.tronton += 1;
+                else if (d.vehicle === 'Container') target.container += 1;
+            });
+            shortageRows.forEach(r => {
+                if (dateMap[r.dateKey]) dateMap[r.dateKey].shortageTon += r.shortageTon;
+            });
+
+            const dateRows = Object.values(dateMap)
+                .sort((a,b) => a.dateObj - b.dateObj)
+                .map(d => ({ ...d, skuCount: d.skuSet.size }));
+
+            deliveryRequirementData = {
+                dateRows,
+                shortageRows: shortageRows.sort((a,b) => b.shortageTon - a.shortageTon || a.dateObj - b.dateObj || a.sku.localeCompare(b.sku))
+            };
+
+            const source = `Source: Sheet SO • Tanggal AB • Qty Ton AM • Actual FG Stock • ${soRawData.rows.length} baris SO`;
+            const info = document.getElementById('actualVsSoSourceInfo');
+            if (info) info.textContent = source;
+            renderDeliveryRequirement(document.getElementById('deliveryRequirementSearch')?.value || '');
+        }
+
+        function clearDeliveryRequirementFilters() {
+            const s = document.getElementById('deliveryRequirementSearch');
+            const d = document.getElementById('deliveryRequirementDate');
+            const v = document.getElementById('deliveryRequirementVehicleFilter');
+            if (s) s.value = '';
+            if (d) d.value = '';
+            if (v) v.value = 'ALL';
+            renderDeliveryRequirement('');
+        }
+
+        function renderDeliveryRequirement(search = '') {
+            const dateBody = document.getElementById('deliveryRequirementDateBody');
+            const shortageBody = document.getElementById('deliveryRequirementShortageBody');
+            if (!dateBody || !shortageBody) return;
+
+            const q = String(search || '').trim().toLowerCase();
+            const dateFilter = document.getElementById('deliveryRequirementDate')?.value || '';
+            const vehicleFilter = document.getElementById('deliveryRequirementVehicleFilter')?.value || 'ALL';
+
+            const vehicleMatches = d => vehicleFilter === 'ALL' ||
+                (vehicleFilter === 'CDD' && d.cdd > 0) ||
+                (vehicleFilter === 'Tronton' && d.tronton > 0) ||
+                (vehicleFilter === 'Container' && d.container > 0);
+
+            const dateRows = (deliveryRequirementData.dateRows || []).filter(d => {
+                if (dateFilter && d.dateKey !== dateFilter) return false;
+                if (!vehicleMatches(d)) return false;
+                if (q && !(`${d.dateKey} ${d.dateObj.toLocaleDateString('id-ID')} ${d.cdd} CDD ${d.tronton} Tronton ${d.container} Container`.toLowerCase().includes(q))) return false;
+                return true;
+            });
+
+            const shortageRows = (deliveryRequirementData.shortageRows || []).filter(r => {
+                if (r.shortageTon <= 0.01) return false;
+                if (dateFilter && r.dateKey !== dateFilter) return false;
+                if (vehicleFilter !== 'ALL' && !Array.from(r.vehicles || []).includes(vehicleFilter)) return false;
+                if (q && !(`${r.dateKey} ${r.sku} ${Array.from(r.vehicles || []).join(' ')}`.toLowerCase().includes(q))) return false;
+                return true;
+            });
+
+            const allDateRows = deliveryRequirementData.dateRows || [];
+            const allShortage = (deliveryRequirementData.shortageRows || []).filter(r => r.shortageTon > 0.01);
+            const totalTon = allDateRows.reduce((s,r) => s + cleanNum(r.totalTon), 0);
+            const totalCDD = allDateRows.reduce((s,r) => s + (r.cdd || 0), 0);
+            const totalTronton = allDateRows.reduce((s,r) => s + (r.tronton || 0), 0);
+            const totalContainer = allDateRows.reduce((s,r) => s + (r.container || 0), 0);
+            const totalShortage = allShortage.reduce((s,r) => s + cleanNum(r.shortageTon), 0);
+            const shortageSku = new Set(allShortage.map(r => r.sku.toUpperCase())).size;
+
+            const setTxt = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+            setTxt('drKpiTon', `${fmtDec(totalTon)} TON`);
+            setTxt('drKpiCDD', totalCDD.toLocaleString('id-ID'));
+            setTxt('drKpiTronton', totalTronton.toLocaleString('id-ID'));
+            setTxt('drKpiContainer', totalContainer.toLocaleString('id-ID'));
+            setTxt('drKpiShortageTon', `${fmtDec(totalShortage)} TON`);
+            setTxt('drKpiShortageSku', shortageSku.toLocaleString('id-ID'));
+
+            const fmtDate = d => d ? d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-';
+
+            dateBody.innerHTML = dateRows.length ? dateRows.map(d => `
+                <tr class="table-row-hover border-b border-borderMain/40">
+                    <td class="px-3 md:px-5 py-3 font-bold text-white font-mono">${fmtDate(d.dateObj)}</td>
+                    <td class="px-3 md:px-5 py-3 text-center font-black ${d.cdd ? 'text-accentCyan' : 'text-textSecondary'}">${d.cdd}</td>
+                    <td class="px-3 md:px-5 py-3 text-center font-black ${d.tronton ? 'text-accentPurple' : 'text-textSecondary'}">${d.tronton}</td>
+                    <td class="px-3 md:px-5 py-3 text-center font-black ${d.container ? 'text-statusWarning' : 'text-textSecondary'}">${d.container}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-black text-white font-mono">${fmtDec(d.totalTon)}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-mono text-textSecondary">${d.skuCount}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-black ${d.shortageTon > 0.01 ? 'text-statusDanger' : 'text-statusSuccess'} font-mono">${fmtDec(d.shortageTon)}</td>
+                </tr>
+            `).join('') : `<tr><td colspan="7" class="px-4 py-10 text-center text-textSecondary italic">Tidak ada kebutuhan delivery sesuai filter.</td></tr>`;
+
+            shortageBody.innerHTML = shortageRows.length ? shortageRows.map(r => `
+                <tr class="table-row-hover border-b border-borderMain/40 bg-statusDanger/5">
+                    <td class="px-3 md:px-5 py-3 font-bold text-white font-mono">${fmtDate(r.dateObj)}</td>
+                    <td class="px-3 md:px-5 py-3 font-bold text-white font-mono">${r.sku}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-mono">${fmtDec(r.qtyTon)}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-mono text-textSecondary">${fmtDec(r.stockBefore)}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-black text-statusDanger font-mono">${fmtDec(r.shortageTon)}</td>
+                    <td class="px-3 md:px-5 py-3 text-center"><span class="inline-flex px-2 py-1 rounded-lg text-[8px] font-bold tracking-wider bg-statusDanger/10 text-statusDanger border border-statusDanger/20">TIDAK BISA KIRIM</span></td>
+                </tr>
+            `).join('') : `<tr><td colspan="6" class="px-4 py-10 text-center text-statusSuccess italic">Tidak ada produk yang terdeteksi shortage berdasarkan actual FG stock.</td></tr>`;
+        }
+
+        function renderActualVsSo(search = '') {
+            const body = document.getElementById('actualVsSoShortageBody');
+            const allBody = document.getElementById('actualVsSoAllMaterialBody');
+            if (!body) return;
+
+            const q = String(search || '').trim().toLowerCase();
+            const segmentFilter = document.getElementById('actualVsSoSegmentFilter')?.value || 'ALL';
+            const unit = document.getElementById('actualVsSoUnitFilter')?.value || 'TON';
+            const unitLabel = unit === 'ZAK' ? 'ZAK' : 'TON';
+            const qtyByUnit = (ton, weightKg) => { const t=cleanNum(ton); if(unit==='TON') return t; const w=cleanNum(weightKg); return w>0 ? (t*1000)/w : null; };
+            const fmtQty = (ton, weightKg) => { const v=qtyByUnit(ton,weightKg); return v===null ? '-' : (unit==='ZAK' ? fmtNum(v) : fmtDec(v)); };
+            const setTxt = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+            setTxt('avsShortageActualHeader', `Actual Stock ${unitLabel}`);
+            setTxt('avsShortageSoHeader', `SO ${unitLabel}`);
+            setTxt('avsShortageGapHeader', `Material Shortage ${unitLabel}`);
+            setTxt('avsAllActualHeader', `Actual Stock ${unitLabel}`);
+            setTxt('avsAllSoHeader', `SO ${unitLabel}`);
+            setTxt('avsAllGapHeader', `Gap ${unitLabel}`);
+            const allRows = (actualVsSoData || []).filter(r => r.status === 'SHORTAGE' && cleanNum(r.gapTon) < -0.01);
+
+            const segments = Array.from(new Set(allRows.map(r => String(r.segment || 'GENERAL').trim().toUpperCase()).filter(Boolean))).sort();
+            const segSelect = document.getElementById('actualVsSoSegmentFilter');
+            if (segSelect) {
+                const current = segSelect.value || 'ALL';
+                segSelect.innerHTML = '<option value="ALL">Semua Segment</option>' + segments.map(seg => `<option value="${seg}">${seg}</option>`).join('');
+                segSelect.value = segments.includes(current) ? current : 'ALL';
+            }
+
+            const rows = allRows.filter(r => {
+                const segment = String(r.segment || 'GENERAL').trim().toUpperCase();
+                const material = String(r.sku || '').trim();
+                if (segmentFilter !== 'ALL' && segment !== segmentFilter) return false;
+                if (q && !(`${segment} ${material}`.toLowerCase().includes(q))) return false;
+                return true;
+            }).sort((a,b) => {
+                const sa = String(a.segment || 'GENERAL');
+                const sb = String(b.segment || 'GENERAL');
+                return sa.localeCompare(sb) || cleanNum(b.shortageTon || -b.gapTon) - cleanNum(a.shortageTon || -a.gapTon) || String(a.sku).localeCompare(String(b.sku));
+            });
+
+            const shortageTon = rows.reduce((s,r) => s + Math.max(0, -cleanNum(r.gapTon)), 0);
+            const actualTon = rows.reduce((s,r) => s + cleanNum(r.actualTon), 0);
+            const soTon = rows.reduce((s,r) => s + cleanNum(r.soTon), 0);
+            const actualQty = rows.reduce((s,r)=>s+(qtyByUnit(r.actualTon,r.weightKg)||0),0);
+            const soQty = rows.reduce((s,r)=>s+(qtyByUnit(r.soTon,r.weightKg)||0),0);
+            const shortageQty = rows.reduce((s,r)=>s+(qtyByUnit(Math.max(0,-cleanNum(r.gapTon)),r.weightKg)||0),0);
+            setTxt('avsKpiMaterial', rows.length.toLocaleString('id-ID'));
+            setTxt('avsKpiShortage', `${unit==='ZAK'?fmtNum(shortageQty):fmtDec(shortageTon)} ${unitLabel}`);
+            setTxt('avsKpiActual', `${unit==='ZAK'?fmtNum(actualQty):fmtDec(actualTon)} ${unitLabel}`);
+            setTxt('avsKpiSo', `${unit==='ZAK'?fmtNum(soQty):fmtDec(soTon)} ${unitLabel}`);
+            setTxt('avsShortageSummary', `${rows.length.toLocaleString('id-ID')} material shortage • ${unit==='ZAK'?fmtNum(shortageQty):fmtDec(shortageTon)} ${unitLabel}`);
+
+            if (!rows.length) {
+                body.innerHTML = '<tr><td colspan="6" class="px-4 py-12 text-center text-statusSuccess italic">Tidak ada material shortage sesuai filter.</td></tr>';
+                return;
+            }
+
+            const groups = {};
+            rows.forEach(r => {
+                const segment = String(r.segment || 'GENERAL').trim().toUpperCase() || 'GENERAL';
+                if (!groups[segment]) groups[segment] = [];
+                groups[segment].push(r);
+            });
+
+            let html = '';
+            Object.keys(groups).sort().forEach(segment => {
+                const items = groups[segment];
+                const segShortage = items.reduce((s,r) => s + (qtyByUnit(Math.max(0,-cleanNum(r.gapTon)),r.weightKg)||0), 0);
+                const segActual = items.reduce((s,r) => s + (qtyByUnit(r.actualTon,r.weightKg)||0), 0);
+                const segSo = items.reduce((s,r) => s + (qtyByUnit(r.soTon,r.weightKg)||0), 0);
+                html += `<tr class="bg-accentCyan/10 border-t-2 border-accentCyan/30">
+                    <td class="px-3 md:px-5 py-3 text-accentCyan font-black" colspan="2"><i class="ph-bold ph-folder-open mr-1"></i>${segment} <span class="text-[9px] text-textSecondary ml-2">${items.length} material</span></td>
+                    <td class="px-3 md:px-5 py-3 text-right font-black text-white font-mono">${unit==='ZAK'?fmtNum(segActual):fmtDec(segActual)}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-black text-white font-mono">${unit==='ZAK'?fmtNum(segSo):fmtDec(segSo)}</td>
+                    <td class="px-3 md:px-5 py-3 text-right font-black text-statusDanger font-mono">${unit==='ZAK'?fmtNum(segShortage):fmtDec(segShortage)}</td>
+                    <td class="px-3 md:px-5 py-3 text-center"><span class="inline-flex px-2 py-1 rounded-lg text-[8px] font-bold bg-statusDanger/10 text-statusDanger border border-statusDanger/20">SHORTAGE</span></td>
+                </tr>`;
+                items.forEach(r => {
+                    const shortage = Math.max(0, -cleanNum(r.gapTon));
+                    html += `<tr class="table-row-hover border-b border-borderMain/40 bg-statusDanger/5">
+                        <td class="px-3 md:px-5 py-3 text-[10px] text-textSecondary">${segment}</td>
+                        <td class="px-3 md:px-5 py-3 font-bold text-white font-mono pl-6 md:pl-8">↳ ${String(r.sku || '-')}</td>
+                        <td class="px-3 md:px-5 py-3 text-right font-mono text-textSecondary">${fmtQty(r.actualTon,r.weightKg)}</td>
+                        <td class="px-3 md:px-5 py-3 text-right font-mono text-white">${fmtQty(r.soTon,r.weightKg)}</td>
+                        <td class="px-3 md:px-5 py-3 text-right font-black text-statusDanger font-mono">${shortage===null?'-':(unit==='ZAK'?fmtNum(shortage):fmtDec(shortage))}</td>
+                        <td class="px-3 md:px-5 py-3 text-center"><span class="inline-flex px-2 py-1 rounded-lg text-[8px] font-bold bg-statusDanger/10 text-statusDanger border border-statusDanger/20">TIDAK CUKUP</span></td>
+                    </tr>`;
+                });
+            });
+            body.innerHTML = html;
+
+            // Detail ALL material Actual VS SO — tetap mengikuti filter Segment/Search.
+            if (allBody) {
+                const allRows = (actualVsSoData || []).filter(r => {
+                    const segment = String(r.segment || 'GENERAL').trim().toUpperCase();
+                    const material = String(r.sku || '').trim();
+                    if (segmentFilter !== 'ALL' && segment !== segmentFilter) return false;
+                    if (q && !(`${segment} ${material}`.toLowerCase().includes(q))) return false;
+                    return true;
+                }).sort((a,b) => {
+                    const sa = String(a.segment || 'GENERAL');
+                    const sb = String(b.segment || 'GENERAL');
+                    return sa.localeCompare(sb) || String(a.sku || '').localeCompare(String(b.sku || ''));
+                });
+
+                const statusLabel = status => ({
+                    SHORTAGE: ['SHORTAGE', 'bg-statusDanger/10 text-statusDanger border-statusDanger/20'],
+                    EXCESS: ['EXCESS', 'bg-statusSuccess/10 text-statusSuccess border-statusSuccess/20'],
+                    MATCH: ['MATCH', 'bg-accentCyan/10 text-accentCyan border-accentCyan/20'],
+                    NO_SO: ['NO SO', 'bg-statusWarning/10 text-statusWarning border-statusWarning/20']
+                }[status] || [status || '-', 'bg-white/5 text-textSecondary border-borderMain']);
+
+                setTxt('avsAllMaterialSummary', `${allRows.length.toLocaleString('id-ID')} material`);
+
+                if (!allRows.length) {
+                    allBody.innerHTML = '<tr><td colspan="6" class="px-4 py-12 text-center text-textSecondary italic">Tidak ada material sesuai filter.</td></tr>';
+                } else {
+                    const groupsAll = {};
+                    allRows.forEach(r => {
+                        const segment = String(r.segment || 'GENERAL').trim().toUpperCase() || 'GENERAL';
+                        if (!groupsAll[segment]) groupsAll[segment] = [];
+                        groupsAll[segment].push(r);
+                    });
+
+                    let allHtml = '';
+                    Object.keys(groupsAll).sort().forEach(segment => {
+                        const items = groupsAll[segment];
+                        const segActual = items.reduce((sum,r)=>sum+(qtyByUnit(r.actualTon,r.weightKg)||0),0);
+                        const segSo = items.reduce((sum,r)=>sum+(qtyByUnit(r.soTon,r.weightKg)||0),0);
+                        const segGap = segActual - segSo;
+                        allHtml += `<tr class="bg-bgCard/70 border-t-2 border-borderMain">
+                            <td class="px-3 md:px-5 py-3 text-accentCyan font-black" colspan="2"><i class="ph-bold ph-folder-open mr-1"></i>${segment} <span class="text-[9px] text-textSecondary ml-2">${items.length} material</span></td>
+                            <td class="px-3 md:px-5 py-3 text-right font-black text-white font-mono">${unit==='ZAK'?fmtNum(segActual):fmtDec(segActual)}</td>
+                            <td class="px-3 md:px-5 py-3 text-right font-black text-white font-mono">${unit==='ZAK'?fmtNum(segSo):fmtDec(segSo)}</td>
+                            <td class="px-3 md:px-5 py-3 text-right font-black ${segGap < -0.01 ? 'text-statusDanger' : segGap > 0.01 ? 'text-statusSuccess' : 'text-accentCyan'} font-mono">${unit==='ZAK'?fmtNum(segGap):fmtDec(segGap)}</td>
+                            <td class="px-3 md:px-5 py-3 text-center"><span class="text-[8px] text-textSecondary">SUMMARY</span></td>
+                        </tr>`;
+                        items.forEach(r => {
+                            const gap = cleanNum(r.gapTon);
+                            const [label, cls] = statusLabel(r.status);
+                            allHtml += `<tr class="table-row-hover border-b border-borderMain/40">
+                                <td class="px-3 md:px-5 py-3 text-[10px] text-textSecondary">${segment}</td>
+                                <td class="px-3 md:px-5 py-3 font-bold text-white font-mono pl-6 md:pl-8">↳ ${String(r.sku || '-')}</td>
+                                <td class="px-3 md:px-5 py-3 text-right font-mono text-white">${fmtQty(r.actualTon,r.weightKg)}</td>
+                                <td class="px-3 md:px-5 py-3 text-right font-mono text-white">${fmtQty(r.soTon,r.weightKg)}</td>
+                                <td class="px-3 md:px-5 py-3 text-right font-black ${cleanNum(r.gapTon) < -0.01 ? 'text-statusDanger' : cleanNum(r.gapTon) > 0.01 ? 'text-statusSuccess' : 'text-accentCyan'} font-mono">${gap===null?'-':(unit==='ZAK'?fmtNum(gap):fmtDec(gap))}</td>
+                                <td class="px-3 md:px-5 py-3 text-center"><span class="inline-flex px-2 py-1 rounded-lg text-[8px] font-bold border ${cls}">${label}</span></td>
+                            </tr>`;
+                        });
+                    });
+                    allBody.innerHTML = allHtml;
+                }
+            }
+        }
+
+        function clearActualVsSoFilters() {
+            const s = document.getElementById('actualVsSoSearch');
+            const v = document.getElementById('actualVsSoSegmentFilter');
+            if (s) s.value = '';
+            if (v) v.value = 'ALL';
+            const u = document.getElementById('actualVsSoUnitFilter');
+            if (u) u.value = 'TON';
+            renderActualVsSo('');
+        }
+
+        function exportActualVsSo() {
+            if (typeof XLSX === 'undefined') { showToast('Export Error', 'Library Excel belum tersedia.', 'error'); return; }
+            const rows = (actualVsSoData || []).filter(r => r.status === 'SHORTAGE' && cleanNum(r.gapTon) < -0.01).map(r => ({
+                'Segment': r.segment || 'GENERAL',
+                'Material / SKU': r.sku,
+                'Actual Stock TON': cleanNum(r.actualTon),
+                'SO TON': cleanNum(r.soTon),
+                'Material Shortage TON': Math.max(0, -cleanNum(r.gapTon)),
+                'Status': 'SHORTAGE'
+            }));
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(rows);
+            XLSX.utils.book_append_sheet(wb, ws, 'Actual Stock VS SO');
+            XLSX.writeFile(wb, `Actual_Stock_VS_SO_Material_Shortage_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportDeliveryRequirement() {
+            if (typeof XLSX === 'undefined') { showToast('Export Error', 'Library Excel belum tersedia.', 'error'); return; }
+
+            const dateRows = (deliveryRequirementData.dateRows || []).map(r => ({
+                'Tanggal': r.dateKey,
+                'CDD': r.cdd,
+                'Tronton': r.tronton,
+                'Container': r.container,
+                'Total Delivery TON': r.totalTon,
+                'SKU': r.skuCount,
+                'Shortage TON': r.shortageTon
+            }));
+
+            const shortageRows = (deliveryRequirementData.shortageRows || [])
+                .filter(r => r.shortageTon > 0.01)
+                .map(r => ({
+                    'Tanggal': r.dateKey,
+                    'SKU': r.sku,
+                    'Kebutuhan TON': r.qtyTon,
+                    'Projected Stock TON': r.stockBefore,
+                    'Shortage TON': r.shortageTon,
+                    'Status': r.status,
+                    'Kendaraan': Array.from(r.vehicles || []).join(', ')
+                }));
+
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.json_to_sheet(dateRows);
+            const ws2 = XLSX.utils.json_to_sheet(shortageRows);
+            XLSX.utils.book_append_sheet(wb, ws1, 'Kebutuhan Kendaraan');
+            XLSX.utils.book_append_sheet(wb, ws2, 'Material Shortage');
+            XLSX.writeFile(wb, `Delivery_Requirement_Material_Shortage_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
 
         function parseReportDate(value) {
             if (value === null || value === undefined || value === '') return new Date(NaN);
@@ -4916,6 +6070,14 @@ ${JSON.stringify(payload)}`;
             if (caret) caret.style.transform = willOpen ? 'rotate(180deg)' : 'rotate(0deg)';
         }
 
+        function toggleActualVsSoMenu() {
+            const menu = document.getElementById('actualVsSoSubmenu');
+            const caret = document.getElementById('actualVsSoMenuCaret');
+            if (!menu) return;
+            const hidden = menu.classList.toggle('hidden');
+            if (caret) caret.style.transform = hidden ? 'rotate(0deg)' : 'rotate(180deg)';
+        }
+
         function handleTabClick(tabName) {
             if (window.innerWidth < 1024) {
                 toggleSidebar();
@@ -4932,19 +6094,19 @@ ${JSON.stringify(payload)}`;
             activeMainTab = tabName;
             const kpiContainer = document.getElementById('kpiContainer'), actionControls = document.getElementById('generalActionControls');
             
-            if (['detail', 'summary-only', 'offtake', 'pallet', 'exec-report', 'exec-report-detail', 'trans-detail', 'trans-summary', 'stok-sig', 'ai-analyst'].includes(tabName)) { 
+            if (['detail', 'summary-only', 'actual-vs-so', 'plan-delivery', 'offtake', 'pallet', 'exec-report', 'exec-report-detail', 'trans-detail', 'trans-summary', 'stok-sig', 'ai-analyst'].includes(tabName)) { 
                 if(kpiContainer) kpiContainer.classList.add('hidden'); 
             } else { 
                 if(kpiContainer) kpiContainer.classList.remove('hidden'); 
             }
             
-            if(['exec-report', 'exec-report-detail', 'trans-detail', 'trans-summary', 'stok-sig'].includes(tabName)) { 
+            if(['actual-vs-so', 'plan-delivery', 'exec-report', 'exec-report-detail', 'trans-detail', 'trans-summary', 'stok-sig'].includes(tabName)) { 
                 if(actionControls) actionControls.classList.add('hidden'); 
             } else { 
                 if(actionControls) actionControls.classList.remove('hidden'); 
             }
             
-            const allTabs = ['stock', 'ai-analyst', 'detail', 'summary-only', 'exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'];
+            const allTabs = ['stock', 'ai-analyst', 'detail', 'summary-only', 'actual-vs-so', 'plan-delivery', 'exec-report', 'exec-report-detail', 'offtake', 'pallet', 'trans-detail', 'trans-summary', 'stok-sig'];
             allTabs.forEach(t => {
                 const view = document.getElementById(`view-${t}`), btn = document.getElementById(`nav-btn-${t}`);
                 if(t === tabName) {
@@ -4963,6 +6125,8 @@ ${JSON.stringify(payload)}`;
                 renderExecReportDetail();
                 setTimeout(renderExecReportDetail, 50);
             }
+            if(tabName === 'actual-vs-so') { renderDeliveryRequirement(document.getElementById('deliveryRequirementSearch')?.value || ''); }
+            if(tabName === 'plan-delivery') { renderPlanDelivery(document.getElementById('planDeliverySearch')?.value || ''); }
             if(tabName === 'stok-sig') {
                 renderStokSigMakloonTable();
                 renderStokSigDetailTable();
@@ -4985,6 +6149,8 @@ ${JSON.stringify(payload)}`;
             else if(tabName === 'ai-analyst') { pTitle.innerText = 'AI Stock Intelligence Dashboard'; pSub.innerText = 'Comprehensive MTD Finished Goods analysis, visual analytics & executive management insight'; icon.className = 'ph-fill ph-sparkle text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-pink-500/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'detail') { pTitle.innerText = 'Detail Master Data Stok'; pSub.innerText = 'Rincian Operasional & Master Item'; icon.className = 'ph-fill ph-database text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-accentCyan/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'summary-only') { pTitle.innerText = 'Ringkasan Stok Overview'; pSub.innerText = 'Tabel Ringkasan Stok Finished Goods'; icon.className = 'ph-fill ph-table text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-accentCyan/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
+            else if(tabName === 'actual-vs-so') { pTitle.innerText = 'Actual Stok VS SO'; pSub.innerText = 'Material shortage berdasarkan perbandingan Actual FG Stock terhadap Sales Order, dikelompokkan berdasarkan Segment dan Material'; icon.className = 'ph-fill ph-git-compare text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentCyan/20 to-blue-500/10 border border-accentCyan/30 rounded-xl md:rounded-2xl shadow-glow-cyan'; }
+            else if(tabName === 'plan-delivery') { pTitle.innerText = 'Plan Delivery'; pSub.innerText = 'Rencana delivery berdasarkan Tanggal SO kolom AB dan Qty Ton kolom AM'; icon.className = 'ph-fill ph-calendar-check text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentCyan/20 to-blue-500/10 border border-accentCyan/30 rounded-xl md:rounded-2xl shadow-glow-cyan'; }
             else if(tabName === 'exec-report') { pTitle.innerText = 'Report — Summary'; pSub.innerText = 'Ringkasan laporan eksekutif berdasarkan tanggal dan data transaksi'; icon.className = 'ph-fill ph-table text-2xl md:text-3xl text-statusSuccess'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-statusSuccess/20 to-emerald-600/10 border border-statusSuccess/30 rounded-xl md:rounded-2xl shadow-glow-green'; }
             else if(tabName === 'exec-report-detail') { pTitle.innerText = 'Report — Detail'; pSub.innerText = 'Opening Balance, IN dan OUT per SKU berdasarkan sheet DATA'; icon.className = 'ph-fill ph-list-dashes text-2xl md:text-3xl text-accentPurple'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentPurple/20 to-accentCyan/10 border border-accentPurple/30 rounded-xl md:rounded-2xl shadow-glow-purple'; }
             else if(tabName === 'trans-detail') { pTitle.innerText = 'Detail Transaksi (DATA)'; pSub.innerText = 'Tampilan data persis sesuai sheet DATA dengan filter tanggal'; icon.className = 'ph-fill ph-list-dashes text-2xl md:text-3xl text-accentCyan'; iconContainer.className = 'p-2.5 md:p-3.5 bg-gradient-to-br from-accentCyan/20 to-blue-500/10 border border-accentCyan/30 rounded-xl md:rounded-2xl shadow-glow-cyan'; }

@@ -644,8 +644,19 @@
                             <span class="flex-1">Stock Overview</span>
                         </button>
                     </li>
+                    <!-- Stock Activity External Menu -->
                     <li>
-                        <button id="nav-btn-ai-analyst" onclick="handleTabClick('ai-analyst')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
+                        <a id="nav-btn-stock-activity"
+                           href="https://fg-logistics.github.io/Stock-Activity/"
+                           target="_self"
+                           class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
+                            <i class="ph-bold ph-arrows-left-right text-xl group-hover:text-accentCyan transition-colors"></i>
+                            <span class="flex-1">Stock Activity</span>
+                            <i class="ph-bold ph-arrow-square-out text-[13px] text-textSecondary/60 group-hover:text-accentCyan transition-colors"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <button id="nav-btn-ai-analyst" onclick="handleTabClick('ai-analyst') class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-textSecondary hover:text-white hover:bg-white/5 transition-all text-left group">
                             <i class="ph-bold ph-sparkle text-xl group-hover:text-accentPurple transition-colors"></i>
                             <span class="flex-1">AI Stock Analyst</span>
                             <span class="text-[8px] bg-accentPurple/15 text-accentPurple border border-accentPurple/20 px-1.5 py-0.5 rounded font-bold">AI</span>
